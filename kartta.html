@@ -11,7 +11,7 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
 
-  <!-- jQuery (Select2 tarvitsee) -->
+  <!-- jQuery -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <!-- Select2 -->
@@ -30,7 +30,7 @@
     #topbar {
       padding: 10px;
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
       border-bottom: 1px solid #e5e5e5;
       flex-wrap: wrap;
@@ -56,7 +56,14 @@
 
 <div id="topbar">
   <select id="stationSelect" multiple></select>
+
   <button id="clear">Näytä kaikki</button>
+
+  <label>
+    <input id="toggleLabels" type="checkbox" checked />
+    Näytä nimet
+  </label>
+
   <span class="hint">Valitse yksi tai useampi asema.</span>
 </div>
 
@@ -74,6 +81,7 @@
 
   const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
   const markers = [];
+  let labelsVisible = true;
 
   function fitToVisible() {
     const visible = markers.filter(m => map.hasLayer(m.marker));
@@ -93,17 +101,29 @@
     });
   }
 
+  function updateTooltips() {
+    markers.forEach(m => {
+      if (labelsVisible && map.hasLayer(m.marker)) {
+        m.marker.openTooltip();
+      } else {
+        m.marker.closeTooltip();
+      }
+    });
+  }
+
   async function loadStations() {
     const res = await fetch(API_URL);
     const dataRaw = await res.json();
 
-    // 🇫🇮 Suodatetaan vain Suomen asemat
+    // 🇫🇮 Vain Suomen asemat
     const data = dataRaw.filter(st => st.countryCode === "FI");
 
     data.sort((a, b) => a.stationName.localeCompare(b.stationName));
 
     data.forEach(st => {
       if (!st.latitude || !st.longitude) return;
+
+      const label = `${st.stationName} (${st.stationShortCode})`;
 
       const marker = L.circleMarker([st.latitude, st.longitude], {
         radius: 6,
@@ -119,11 +139,17 @@
         Tyyppi: ${st.stationType || ''}
       `);
 
+      marker.bindTooltip(label, {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -6],
+        opacity: 0.9
+      });
+
       marker.addTo(map);
 
       markers.push({ data: st, marker });
 
-      // Lisää Select2-valikkoon
       const option = new Option(
         `${st.stationName} (${st.stationShortCode})`,
         st.stationShortCode,
@@ -134,16 +160,16 @@
     });
 
     fitToVisible();
+    updateTooltips();
   }
 
-  // Alusta Select2
+  // Select2
   $('#stationSelect').select2({
     placeholder: "Valitse asema(t)...",
     allowClear: true,
     width: 'resolve'
   });
 
-  // Kun valinta muuttuu
   $('#stationSelect').on('change', function () {
     const selected = $(this).val();
 
@@ -154,6 +180,7 @@
     }
 
     fitToVisible();
+    updateTooltips();
   });
 
   // Näytä kaikki
@@ -161,6 +188,13 @@
     $('#stationSelect').val(null).trigger('change');
     showOnly(() => true);
     fitToVisible();
+    updateTooltips();
+  });
+
+  // 🔹 Nimet päälle/pois
+  document.getElementById('toggleLabels').addEventListener('change', e => {
+    labelsVisible = e.target.checked;
+    updateTooltips();
   });
 
   loadStations();
