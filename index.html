@@ -3,12 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asemakartta Application</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Asemakartta - Station Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/1.7.1/css/tom-select.css" />
+    <style>
+        #map { height: 600px; }
+        .dropdown { margin: 15px 0; }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Asemakartta Application</h1>
-    <p>This application provides a detailed view of the Asemakartta maps and functionalities.</p>
-    <script src="script.js"></script>
+    <h1>Asemakartta - Station Map</h1>
+    <div class="dropdown">
+        <select id="country-filter" multiple>
+            <option value="finland">Finland</option>
+            <option value="sweden">Sweden</option>
+            <option value="norway">Norway</option>
+        </select>
+    </div>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/1.7.1/tom-select.complete.min.js"></script>
+    <script>
+        // Initialize Leaflet map
+        const map = L.map('map').setView([61.9241, 25.7482], 5);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Initialize Tom Select
+        const select = new TomSelect('#country-filter');
+
+        // Function to filter stations based on country selection
+        const filterStations = () => {
+            const selectedCountries = select.getValue();
+            // Your logic to filter stations goes here
+        };
+
+        select.on('change', filterStations);
+
+        // Function to search stations
+        const searchStations = (searchTerm) => {
+            // Logic to search for stations based on the term
+        };
+
+        // Search input handling
+        const searchInput = document.createElement('input');
+        searchInput.placeholder = 'Search for a station';
+        searchInput.addEventListener('input', (e) => searchStations(e.target.value));
+        document.body.prepend(searchInput);
+
+        // Function to toggle station labels
+        const toggleLabels = () => {
+            // Logic to show/hide station labels on the map
+        };
+        // Add a button for toggling labels
+        const toggleButton = document.createElement('button');
+        toggleButton.innerText = 'Toggle Labels';
+        toggleButton.addEventListener('click', toggleLabels);
+        document.body.appendChild(toggleButton);
+    </script>
 </body>
 </html>
