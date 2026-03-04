@@ -53,11 +53,11 @@
 <script>
   const map = L.map('map').setView([64.5, 26.0], 5);
 
-  // 🌍 MML taustakartta WMTS
-  const mmlLayer = L.tileLayer(
-    'https://kartta.maanmittauslaitos.fi/avoin/wmts/maastokartta/default/GoogleMapsCompatible/{z}/{y}/{x}.png?key=bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f',
-    { attribution: '© Maanmittauslaitos' }
-  ).addTo(map);
+  // 🔹 OpenStreetMap taustakartta
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
 
   // 🌐 Digitraffic asemadata
   const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
@@ -71,10 +71,7 @@
 
   function setLabelsVisible(visible) {
     labelsVisible = visible;
-    markers.forEach(m => {
-      if (visible) m.marker.openTooltip();
-      else m.marker.closeTooltip();
-    });
+    markers.forEach(m => visible ? m.marker.openTooltip() : m.marker.closeTooltip());
   }
 
   function showOnly(predicateFn) {
@@ -109,10 +106,9 @@
         fillOpacity: 0.85,
         weight: 1
       }).bindPopup(`<b>${st.stationName}</b><br/>Koodi: ${st.stationShortCode}<br/>Tyyppi: ${st.stationType || ''}`)
-        .bindTooltip(label, {permanent:true,direction:'top',offset:[0,-6],opacity:0.9, className:'stationLabel'});
+        .bindTooltip(label, {permanent:true,direction:'top',offset:[0,-6],opacity:0.9,className:'stationLabel'});
 
       marker.addTo(map);
-
       markers.push({data: st, marker});
 
       const option = document.createElement('option');
@@ -134,8 +130,8 @@
 
   document.getElementById('search').addEventListener('input', e=>applySearch(e.target.value));
   document.getElementById('clear').addEventListener('click', ()=>{
-    document.getElementById('search').value = '';
-    document.getElementById('stationSelect').selectedIndex = -1;
+    document.getElementById('search').value='';
+    document.getElementById('stationSelect').selectedIndex=-1;
     applySearch('');
   });
   document.getElementById('toggleLabels').addEventListener('change', e=>setLabelsVisible(e.target.checked));
@@ -148,7 +144,7 @@
 
   function updateMarkers() {
     markers.forEach(m => {
-      m.marker.setStyle({radius: markerRadius, color: markerColor, fillColor: markerColor});
+      m.marker.setStyle({radius: markerRadius,color:markerColor,fillColor:markerColor});
       const tooltipEl = m.marker.getTooltip();
       if (tooltipEl) tooltipEl._container.style.fontSize = fontSize+'px';
     });
@@ -179,11 +175,12 @@
       const data = await res.json();
 
       L.geoJSON(data, {style:{color:'#880000',weight:2}}).addTo(map);
-    } catch(err) { console.error(err); }
+    } catch(err){ console.error(err); }
   }
 
   map.on('load moveend zoomend', addRailNetwork);
   addRailNetwork();
+
 </script>
 
 </body>
