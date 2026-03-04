@@ -3,20 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Station Selector</title>
+    <title>Asemakartta</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css">
+    <style>
+        #map { height: 600px; }
+        .controls { margin-bottom: 10px; }
+    </style>
 </head>
 <body>
-    <h1>Select Stations</h1>
-    <select id="station-select" multiple>
-        <option value="station1">Station 1</option>
-        <option value="station2">Station 2</option>
-        <option value="station3">Station 3</option>
-    </select>
+    <div class="controls">
+        <select id="stationSelect" multiple></select>
+        <input type="checkbox" id="toggleLabels"> Toggle Labels<br>
+        <button id="showAll">Show All</button>
+        <button id="clear">Clear</button>
+    </div>
+    <div id="map"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/tom-select.complete.min.js"></script>
     <script>
-        new TomSelect('#station-select');
+        const map = L.map('map').setView([60.1699, 24.9384], 6);
+        // Tile Layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Fetch stations
+        async function fetchStations() {
+            const response = await fetch('https://rata.digitraffic.fi/api/v1/metadata/stations');
+            const data = await response.json();
+            populateDropdown(data);
+            return data;
+        }
+
+        function populateDropdown(stations) {
+            const select = new TomSelect('#stationSelect', {
+                options: stations.map(station => ({
+                    value: station.stationId,
+                    text: station.stationName
+                }))
+            });
+        }
+
+        async function addMarkers(stations) {
+            for (let station of stations) {
+                const marker = L.marker([station.latitude, station.longitude]).addTo(map);
+                marker.bindPopup(station.stationName);
+            }
+        }
+
+        document.getElementById('showAll').addEventListener('click', async () => {
+            const stations = await fetchStations();
+            addMarkers(stations);
+        });
+
+        document.getElementById('clear').addEventListener('click', () => {
+            // Clear markers
+            map.eachLayer((layer) => { if (layer instanceof L.Marker) { map.removeLayer(layer); }});
+        });
+
+        fetchStations(); // Load stations initially
     </script>
 </body>
 </html>
