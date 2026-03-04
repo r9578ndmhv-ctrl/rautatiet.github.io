@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asemakartta + Rataverkko</title>
+  <title>Asemakartta + Rataverkko Demo</title>
 
   <link
     rel="stylesheet"
@@ -53,7 +53,7 @@
 <script>
   const map = L.map('map').setView([64.5, 26.0], 5);
 
-  // 🔹 OpenStreetMap taustakartta
+  // 🔹 Taustakartta OpenStreetMap
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap'
@@ -161,25 +161,18 @@
 
   loadStations().catch(err=>console.error(err));
 
-  // 🌐 MML Rataverkko (GeoJSON)
-  async function addRailNetwork() {
-    try {
-      const bounds = map.getBounds();
-      const params = [
-        `bbox=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
-        `apikey=bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f`
-      ];
-      const url = `https://avoin-paikkatieto.maanmittauslaitos.fi/maastotiedot/features/v1/collections/LIITTYMAT/items?${params.join('&')}`;
-
-      const res = await fetch(url);
-      const data = await res.json();
-
-      L.geoJSON(data, {style:{color:'#880000',weight:2}}).addTo(map);
-    } catch(err){ console.error(err); }
-  }
-
-  map.on('load moveend zoomend', addRailNetwork);
-  addRailNetwork();
+  // 🌐 Rataverkko esimerkkigeometriana (demo toimii GitHub Pagesilla)
+  const exampleRail = {
+    "type": "FeatureCollection",
+    "features": [
+      { "type": "Feature",
+        "geometry": { "type": "LineString",
+                      "coordinates": [[24.935,60.169],[25.748,61.498],[27.700,62.241]] },
+        "properties": { "name":"Esimerkkirata" }
+      }
+    ]
+  };
+  L.geoJSON(exampleRail, {style:{color:'#880000',weight:2}}).addTo(map);
 
 </script>
 
