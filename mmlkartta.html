@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asemakartta + Rataverkko Demo</title>
+  <title>Asemakartta + Rataverkko Selkeä</title>
 
   <link
     rel="stylesheet"
@@ -53,18 +53,18 @@
 <script>
   const map = L.map('map').setView([64.5, 26.0], 5);
 
-  // 🔹 Taustakartta OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
+  // 🔹 Minimalistinen taustakartta OSM Light
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; Stadia Maps, OpenStreetMap contributors',
+    maxZoom: 20
   }).addTo(map);
 
   // 🌐 Digitraffic asemadata
   const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
   let markers = [];
   let labelsVisible = true;
-  let fontSize = 12;
-  let markerRadius = 5;
+  let fontSize = 10; // pienempi teksti, erottuu paremmin
+  let markerRadius = 4; // pienemmät pallot
   let markerColor = '#1f6feb';
 
   function normalize(s) { return (s||'').toString().trim().toLowerCase(); }
@@ -161,7 +161,7 @@
 
   loadStations().catch(err=>console.error(err));
 
-  // 🌐 Rataverkko esimerkkigeometriana (demo toimii GitHub Pagesilla)
+  // 🌐 Rataverkko (demo, paksumpi punainen viiva)
   const exampleRail = {
     "type": "FeatureCollection",
     "features": [
@@ -172,7 +172,7 @@
       }
     ]
   };
-  L.geoJSON(exampleRail, {style:{color:'#880000',weight:2}}).addTo(map);
+  L.geoJSON(exampleRail, {style:{color:'#ff0000',weight:4}}).addTo(map);
 
 </script>
 
