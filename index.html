@@ -94,9 +94,7 @@
   }
 
   async function loadStations() {
-    // Digitraffic suosittelee tunnisteheaderia (älä lähetä henkilötietoja).
-    // Tämä on hyvä käytäntö kuorman ja ongelmatilanteiden selvittelyyn.    });
-
+    const res = await fetch(API_URL);
     if (!res.ok) throw new Error('Asemien haku epäonnistui: ' + res.status);
     const data = await res.json();
 
@@ -135,7 +133,7 @@
     fitToVisible();
   }
 
-  //  3) Haku: näyttää vain osuvat asemat (nimi tai lyhytkoodi)
+  // 3) Haku: näyttää vain osuvat asemat (nimi tai lyhytkoodi)
   function applySearch(q) {
     const needle = normalize(q);
     if (!needle) {
