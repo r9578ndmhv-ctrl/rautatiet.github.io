@@ -8,172 +8,129 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
   />
   <style>
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; }
     #topbar {
-      padding: 10px;
+      padding: 8px; background: white;
+      border-bottom: 1px solid #ddd;
       display: flex;
-      gap: 10px;
-      align-items: center;
-      border-bottom: 1px solid #e5e5e5;
       flex-wrap: wrap;
+      gap: 8px;
     }
-    #map { height: calc(100vh - 80px); }
-    input[type="text"], select { padding: 6px; }
-    .hint { color: #666; font-size: 12px; }
-    button { padding: 5px 10px; }
+    #map { height: calc(100vh - 60px); }
+    button, input, select { padding: 4px 8px; font-size: 14px; }
   </style>
 </head>
 <body>
 
 <div id="topbar">
-  <input id="search" type="text" placeholder="Hae asemaa (nimi tai koodi)..." />
+  <input id="search" placeholder="Hae asemaa..." />
   <select id="stationSelect" multiple size="5"></select>
   <button id="clear">Näytä kaikki</button>
   <label><input id="toggleLabels" type="checkbox" checked /> Näytä nimet</label>
-  <button id="increaseFont">Teksti +</button>
-  <button id="decreaseFont">Teksti -</button>
-  <button id="increaseMarker">Pallo +</button>
-  <button id="decreaseMarker">Pallo -</button>
-  <button id="changeColor">Vaihda väri</button>
-  <span class="hint">Valikko ja napit hallitsevat markkereita ja nimiä.</span>
+  <button id="incFont">Teksti +</button>
+  <button id="decFont">Teksti -</button>
+  <button id="incMarker">Pallo +</button>
+  <button id="decMarker">Pallo -</button>
+  <button id="toggleColor">Vaihda väri</button>
 </div>
 
 <div id="map"></div>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-  crossorigin=""
-></script>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map = L.map('map').setView([64.5, 26.0], 5);
 
-// 🔹 Tyhjä taustakartta (Stamen Toner Background)
+// Minimalistinen taustakartta
 L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner-background/{z}/{x}/{y}.png', {
-  attribution: 'Map tiles by Stamen Design, OpenStreetMap contributors',
-  maxZoom: 20
+  attribution: '&copy; Stamen, OSM',
+  maxZoom: 18
 }).addTo(map);
 
-// 🌐 Digitraffic asemadata
-const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
+// Asemat
 let markers = [];
-let labelsVisible = true;
 let fontSize = 10;
 let markerRadius = 4;
 let markerColor = '#1f6feb';
 
-function normalize(s){ return (s||'').toString().trim().toLowerCase(); }
-
-function setLabelsVisible(visible){
-  labelsVisible = visible;
-  markers.forEach(m=>visible ? m.marker.openTooltip() : m.marker.closeTooltip());
-}
-
-function showOnly(predicateFn){
-  markers.forEach(m=>{
-    const show = predicateFn(m.data);
-    if(show){ if(!map.hasLayer(m.marker)) m.marker.addTo(map); }
-    else{ if(map.hasLayer(m.marker)) map.removeLayer(m.marker); }
+function updateMarkers() {
+  markers.forEach(m => {
+    m.setStyle({ radius: markerRadius, color: markerColor, fillColor: markerColor });
+    const tt = m.getTooltip();
+    if (tt) tt._container.style.fontSize = fontSize + 'px';
   });
 }
 
-function fitToVisible(){
-  const visible = markers.filter(m=>map.hasLayer(m.marker));
-  if(visible.length===0) return;
-  const group = L.featureGroup(visible.map(v=>v.marker));
-  map.fitBounds(group.getBounds().pad(0.2));
-}
+fetch('https://rata.digitraffic.fi/api/v1/metadata/stations')
+  .then(r => r.json())
+  .then(data => {
+    const fi = data.filter(s => s.countryCode==='FI');
+    const select = document.getElementById('stationSelect');
+    fi.forEach(st => {
+      if (!st.latitude || !st.longitude) return;
+      const label = `${st.stationName} (${st.stationShortCode})`;
+      const marker = L.circleMarker([st.latitude, st.longitude], {
+        radius: markerRadius,
+        color: markerColor,
+        fillColor: markerColor,
+        fillOpacity:0.8
+      }).bindTooltip(label,{permanent:true,opacity:0.9}).addTo(map);
+      markers.push(marker);
 
-async function loadStations(){
-  const res = await fetch(API_URL);
-  const data = await res.json();
-  const fiStations = data.filter(s=>s.countryCode==='FI');
-
-  const select = document.getElementById('stationSelect');
-  fiStations.forEach(st=>{
-    if(st.latitude==null || st.longitude==null) return;
-
-    const label = `${st.stationName} (${st.stationShortCode})`;
-    const marker = L.circleMarker([st.latitude, st.longitude],{
-      radius: markerRadius,
-      color: markerColor,
-      fillColor: markerColor,
-      fillOpacity:0.85,
-      weight:1
-    })
-    .bindPopup(`<b>${st.stationName}</b><br/>Koodi: ${st.stationShortCode}<br/>Tyyppi: ${st.stationType || ''}`)
-    .bindTooltip(label,{permanent:true,direction:'top',offset:[0,-6],opacity:0.9,className:'stationLabel'});
-
-    marker.addTo(map);
-    markers.push({data:st,marker});
-
-    const option = document.createElement('option');
-    option.value = st.stationShortCode;
-    option.textContent = label;
-    select.appendChild(option);
+      const o = document.createElement('option');
+      o.value = st.stationShortCode;
+      o.textContent = label;
+      select.appendChild(o);
+    });
   });
 
-  setLabelsVisible(true);
-  fitToVisible();
-}
-
-function applySearch(q){
-  const needle = normalize(q);
-  if(!needle){ showOnly(()=>true); fitToVisible(); return; }
-  showOnly(st=>normalize(st.stationName).includes(needle) || normalize(st.stationShortCode).includes(needle));
-  fitToVisible();
-}
-
-document.getElementById('search').addEventListener('input', e=>applySearch(e.target.value));
-document.getElementById('clear').addEventListener('click', ()=>{
-  document.getElementById('search').value='';
-  document.getElementById('stationSelect').selectedIndex=-1;
-  applySearch('');
+// Napit ja logiikka
+document.getElementById('toggleLabels').addEventListener('change', e => {
+  markers.forEach(m => e.target.checked ? m.openTooltip() : m.closeTooltip());
 });
-document.getElementById('toggleLabels').addEventListener('change', e=>setLabelsVisible(e.target.checked));
-
-document.getElementById('stationSelect').addEventListener('change', e=>{
-  const selected = Array.from(e.target.selectedOptions).map(o=>o.value);
-  showOnly(st=>selected.includes(st.stationShortCode));
-  fitToVisible();
-});
-
-function updateMarkers(){
-  markers.forEach(m=>{
-    m.marker.setStyle({radius:markerRadius,color:markerColor,fillColor:markerColor});
-    const tooltipEl = m.marker.getTooltip();
-    if(tooltipEl) tooltipEl._container.style.fontSize = fontSize+'px';
-  });
-}
-
-document.getElementById('increaseFont').addEventListener('click', ()=>{ fontSize+=2; updateMarkers(); });
-document.getElementById('decreaseFont').addEventListener('click', ()=>{ fontSize=Math.max(6,fontSize-2); updateMarkers(); });
-document.getElementById('increaseMarker').addEventListener('click', ()=>{ markerRadius+=2; updateMarkers(); });
-document.getElementById('decreaseMarker').addEventListener('click', ()=>{ markerRadius=Math.max(2,markerRadius-2); updateMarkers(); });
-document.getElementById('changeColor').addEventListener('click', ()=>{
-  markerColor = markerColor==='#1f6feb' ? '#e63946' : '#1f6feb';
+document.getElementById('incFont').onclick = ()=>{ fontSize+=2; updateMarkers(); };
+document.getElementById('decFont').onclick = ()=>{ fontSize=Math.max(6,fontSize-2); updateMarkers(); };
+document.getElementById('incMarker').onclick = ()=>{ markerRadius+=2; updateMarkers(); };
+document.getElementById('decMarker').onclick = ()=>{ markerRadius=Math.max(2,markerRadius-2); updateMarkers(); };
+document.getElementById('toggleColor').onclick = ()=>{
+  markerColor = markerColor === '#1f6feb' ? '#e63946' : '#1f6feb';
   updateMarkers();
-});
+};
+document.getElementById('clear').onclick = ()=>{
+  document.getElementById('search').value='';
+  document.getElementById('stationSelect').selectedIndex = -1;
+  markers.forEach(m => m.addTo(map));
+};
+document.getElementById('stationSelect').onchange = e => {
+  const vals = Array.from(e.target.selectedOptions).map(o=>o.value);
+  markers.forEach(m => {
+    const code = m.getTooltip().getContent().split('(').pop().replace(')','');
+    if (vals.length && !vals.includes(code)) map.removeLayer(m);
+    else m.addTo(map);
+  });
+};
+document.getElementById('search').oninput = e => {
+  const q = e.target.value.toLowerCase();
+  markers.forEach(m => {
+    const label = m.getTooltip().getContent().toLowerCase();
+    if (!q || label.includes(q)) m.addTo(map);
+    else map.removeLayer(m);
+  });
+};
 
-loadStations().catch(err=>console.error(err));
-
-// 🌐 Rataverkko (demo)
-const exampleRail = {
+// Esimerkkirataverkko (demo)
+const rail = {
   "type":"FeatureCollection",
   "features":[
     {"type":"Feature",
      "geometry":{"type":"LineString",
-                 "coordinates":[[24.935,60.169],[25.748,61.498],[27.700,62.241]]},
-     "properties":{"name":"Esimerkkirata"}}
+                 "coordinates":[[24.94,60.17],[25.75,61.50],[27.70,62.24]]},
+     "properties":{"name":"RataDemo"}}
   ]
 };
-L.geoJSON(exampleRail,{style:{color:'#ff0000',weight:4}}).addTo(map);
-</script>
+L.geoJSON(rail,{style:{color:'#ff0000',weight:4}}).addTo(map);
 
+</script>
 </body>
 </html>
