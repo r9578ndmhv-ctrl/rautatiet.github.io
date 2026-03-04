@@ -1,76 +1,82 @@
 <!doctype html>
 <html lang="fi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asemakartta</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Asemakartta</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-  <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-  <!-- Select2 -->
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-        rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
+<style>
+body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; }
 
-    #topbar {
-      padding: 10px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      border-bottom: 1px solid #e5e5e5;
-      flex-wrap: wrap;
-    }
+#topbar {
+  padding:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  border-bottom:1px solid #ddd;
+}
 
-    #map {
-      height: calc(100vh - 70px);
-    }
+#map { height:calc(100vh - 90px); }
 
-    #stationSelect {
-      min-width: 300px;
-      max-width: 500px;
-    }
+.station-label {
+  font-weight:600;
+  background:white;
+  border:1px solid #ccc;
+  border-radius:4px;
+  padding:2px 6px;
+}
 
-    .hint {
-      color: #666;
-      font-size: 12px;
-    }
+.control-group {
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
 
-    /* Aseman nimi */
-    .station-label {
-      font-weight: 600;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 2px 6px;
-      transition: font-size 0.15s ease;
-    }
-  </style>
+button {
+  cursor:pointer;
+}
+</style>
 </head>
 
 <body>
 
 <div id="topbar">
-  <select id="stationSelect" multiple></select>
 
-  <button id="clear">Näytä kaikki</button>
+<select id="stationSelect" multiple style="min-width:300px;"></select>
+<button id="clear">Näytä kaikki</button>
 
-  <label>
-    <input id="toggleLabels" type="checkbox" checked />
-    Näytä nimet
-  </label>
+<label>
+  <input id="toggleLabels" type="checkbox" checked>
+  Näytä nimet
+</label>
 
-  <span class="hint">Valitse yksi tai useampi asema.</span>
+<div class="control-group">
+  Teksti:
+  <button id="textMinus">−</button>
+  <button id="textPlus">+</button>
+</div>
+
+<div class="control-group">
+  Pallo:
+  <button id="markerMinus">−</button>
+  <button id="markerPlus">+</button>
+</div>
+
+<div class="control-group">
+  Väri:
+  <input type="color" id="colorPicker" value="#1f6feb">
+</div>
+
 </div>
 
 <div id="map"></div>
@@ -78,151 +84,151 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  const map = L.map('map').setView([64.5, 26.0], 5);
+const map = L.map('map').setView([64.5, 26.0], 5);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
 
-  const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
-  const markers = [];
-  let labelsVisible = true;
+const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
 
-  function fitToVisible() {
-    const visible = markers.filter(m => map.hasLayer(m.marker));
-    if (visible.length === 0) return;
-    const group = L.featureGroup(visible.map(v => v.marker));
-    map.fitBounds(group.getBounds().pad(0.2));
-  }
+const markers = [];
+let labelsVisible = true;
 
-  function showOnly(predicateFn) {
-    markers.forEach(m => {
-      const shouldShow = predicateFn(m.data);
-      if (shouldShow) {
-        if (!map.hasLayer(m.marker)) m.marker.addTo(map);
-      } else {
-        if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
-      }
-    });
-  }
+let textScale = 1;
+let markerScale = 1;
+let markerColor = "#1f6feb";
 
-  function updateTooltips() {
-    markers.forEach(m => {
-      if (labelsVisible && map.hasLayer(m.marker)) {
-        m.marker.openTooltip();
-      } else {
-        m.marker.closeTooltip();
-      }
-    });
-  }
+function fitToVisible() {
+  const visible = markers.filter(m => map.hasLayer(m.marker));
+  if (!visible.length) return;
+  const group = L.featureGroup(visible.map(v => v.marker));
+  map.fitBounds(group.getBounds().pad(0.2));
+}
 
-  /* 🔥 Dynaaminen koko zoomin mukaan */
-  function updateSizes() {
-    const zoom = map.getZoom();
-
-    // Skaalataan suhteessa zoomiin
-    const radius = Math.max(4, zoom * 1.5);
-    const fontSize = Math.max(12, zoom * 1.6);
-
-    markers.forEach(m => {
-      m.marker.setRadius(radius);
-
-      const el = m.marker.getTooltip()?.getElement();
-      if (el) {
-        el.style.fontSize = fontSize + "px";
-      }
-    });
-  }
-
-  async function loadStations() {
-    const res = await fetch(API_URL);
-    const dataRaw = await res.json();
-
-    const data = dataRaw.filter(st => st.countryCode === "FI");
-    data.sort((a, b) => a.stationName.localeCompare(b.stationName));
-
-    data.forEach(st => {
-      if (!st.latitude || !st.longitude) return;
-
-      const label = `${st.stationName} (${st.stationShortCode})`;
-
-      const marker = L.circleMarker([st.latitude, st.longitude], {
-        radius: 8,   // 🔵 suurempi peruskoko
-        color: '#1f6feb',
-        fillColor: '#1f6feb',
-        fillOpacity: 0.9,
-        weight: 1
-      });
-
-      marker.bindPopup(`
-        <b>${st.stationName}</b><br/>
-        Koodi: ${st.stationShortCode}<br/>
-        Tyyppi: ${st.stationType || ''}
-      `);
-
-      marker.bindTooltip(label, {
-        permanent: true,
-        direction: 'top',
-        offset: [0, -6],
-        opacity: 0.9,
-        className: 'station-label'
-      });
-
-      marker.addTo(map);
-
-      markers.push({ data: st, marker });
-
-      const option = new Option(
-        `${st.stationName} (${st.stationShortCode})`,
-        st.stationShortCode,
-        false,
-        false
-      );
-      $('#stationSelect').append(option);
-    });
-
-    fitToVisible();
-    updateTooltips();
-    updateSizes();
-  }
-
-  // Select2
-  $('#stationSelect').select2({
-    placeholder: "Valitse asema(t)...",
-    allowClear: true,
-    width: 'resolve'
-  });
-
-  $('#stationSelect').on('change', function () {
-    const selected = $(this).val();
-
-    if (!selected || selected.length === 0) {
-      showOnly(() => true);
+function showOnly(predicateFn) {
+  markers.forEach(m => {
+    const show = predicateFn(m.data);
+    if (show) {
+      if (!map.hasLayer(m.marker)) m.marker.addTo(map);
     } else {
-      showOnly(st => selected.includes(st.stationShortCode));
+      if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
     }
+  });
+}
 
-    fitToVisible();
-    updateTooltips();
+function updateTooltips() {
+  markers.forEach(m => {
+    if (labelsVisible && map.hasLayer(m.marker)) {
+      m.marker.openTooltip();
+    } else {
+      m.marker.closeTooltip();
+    }
+  });
+}
+
+function updateSizes() {
+  const zoom = map.getZoom();
+
+  const radius = Math.max(4, zoom * 1.5 * markerScale);
+  const fontSize = Math.max(12, zoom * 1.6 * textScale);
+
+  markers.forEach(m => {
+    m.marker.setRadius(radius);
+    m.marker.setStyle({ color: markerColor, fillColor: markerColor });
+
+    const el = m.marker.getTooltip()?.getElement();
+    if (el) el.style.fontSize = fontSize + "px";
+  });
+}
+
+async function loadStations() {
+  const res = await fetch(API_URL);
+  const dataRaw = await res.json();
+
+  const data = dataRaw.filter(st => st.countryCode === "FI");
+  data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
+
+  data.forEach(st => {
+    if (!st.latitude || !st.longitude) return;
+
+    const marker = L.circleMarker([st.latitude, st.longitude], {
+      radius: 8,
+      color: markerColor,
+      fillColor: markerColor,
+      fillOpacity: 0.9,
+      weight: 1
+    });
+
+    marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
+
+    marker.bindTooltip(
+      `${st.stationName} (${st.stationShortCode})`,
+      { permanent:true, direction:'top', offset:[0,-6], className:'station-label' }
+    );
+
+    marker.addTo(map);
+    markers.push({ data:st, marker });
+
+    const option = new Option(
+      `${st.stationName} (${st.stationShortCode})`,
+      st.stationShortCode,
+      false,false
+    );
+    $('#stationSelect').append(option);
   });
 
-  document.getElementById('clear').addEventListener('click', () => {
-    $('#stationSelect').val(null).trigger('change');
-    showOnly(() => true);
-    fitToVisible();
-    updateTooltips();
-  });
+  fitToVisible();
+  updateTooltips();
+  updateSizes();
+}
 
-  document.getElementById('toggleLabels').addEventListener('change', e => {
-    labelsVisible = e.target.checked;
-    updateTooltips();
-  });
+$('#stationSelect').select2({
+  placeholder:"Valitse asema(t)...",
+  allowClear:true
+});
 
-  // 🔥 Zoom-tapahtuma
-  map.on('zoomend', updateSizes);
+$('#stationSelect').on('change', function(){
+  const selected = $(this).val();
+  if (!selected || !selected.length) {
+    showOnly(()=>true);
+  } else {
+    showOnly(st=>selected.includes(st.stationShortCode));
+  }
+  fitToVisible();
+  updateTooltips();
+});
 
-  loadStations();
+document.getElementById('clear').addEventListener('click', ()=>{
+  $('#stationSelect').val(null).trigger('change');
+  showOnly(()=>true);
+  fitToVisible();
+  updateTooltips();
+});
+
+document.getElementById('toggleLabels').addEventListener('change', e=>{
+  labelsVisible = e.target.checked;
+  updateTooltips();
+});
+
+/* 🔘 Tekstin koko */
+document.getElementById('textPlus').onclick = ()=>{ textScale += 0.2; updateSizes(); };
+document.getElementById('textMinus').onclick = ()=>{ textScale = Math.max(0.4, textScale - 0.2); updateSizes(); };
+
+/* 🔵 Pallon koko */
+document.getElementById('markerPlus').onclick = ()=>{ markerScale += 0.2; updateSizes(); };
+document.getElementById('markerMinus').onclick = ()=>{ markerScale = Math.max(0.4, markerScale - 0.2); updateSizes(); };
+
+/* 🎨 Väri */
+document.getElementById('colorPicker').addEventListener('input', e=>{
+  markerColor = e.target.value;
+  updateSizes();
+});
+
+map.on('zoomend', updateSizes);
+
+loadStations();
 </script>
 
 </body>
