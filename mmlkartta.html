@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asemakartta + Rataverkko Selkeä</title>
+  <title>Selkeä Rautatiekartta</title>
 
   <link
     rel="stylesheet"
@@ -51,129 +51,128 @@
 ></script>
 
 <script>
-  const map = L.map('map').setView([64.5, 26.0], 5);
+const map = L.map('map').setView([64.5, 26.0], 5);
 
-  // 🔹 Minimalistinen taustakartta OSM Light
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; Stadia Maps, OpenStreetMap contributors',
-    maxZoom: 20
-  }).addTo(map);
+// 🔹 Tyhjä taustakartta (Stamen Toner Background)
+L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner-background/{z}/{x}/{y}.png', {
+  attribution: 'Map tiles by Stamen Design, OpenStreetMap contributors',
+  maxZoom: 20
+}).addTo(map);
 
-  // 🌐 Digitraffic asemadata
-  const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
-  let markers = [];
-  let labelsVisible = true;
-  let fontSize = 10; // pienempi teksti, erottuu paremmin
-  let markerRadius = 4; // pienemmät pallot
-  let markerColor = '#1f6feb';
+// 🌐 Digitraffic asemadata
+const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
+let markers = [];
+let labelsVisible = true;
+let fontSize = 10;
+let markerRadius = 4;
+let markerColor = '#1f6feb';
 
-  function normalize(s) { return (s||'').toString().trim().toLowerCase(); }
+function normalize(s){ return (s||'').toString().trim().toLowerCase(); }
 
-  function setLabelsVisible(visible) {
-    labelsVisible = visible;
-    markers.forEach(m => visible ? m.marker.openTooltip() : m.marker.closeTooltip());
-  }
+function setLabelsVisible(visible){
+  labelsVisible = visible;
+  markers.forEach(m=>visible ? m.marker.openTooltip() : m.marker.closeTooltip());
+}
 
-  function showOnly(predicateFn) {
-    markers.forEach(m => {
-      const show = predicateFn(m.data);
-      if (show) { if (!map.hasLayer(m.marker)) m.marker.addTo(map); }
-      else { if (map.hasLayer(m.marker)) map.removeLayer(m.marker); }
-    });
-  }
-
-  function fitToVisible() {
-    const visible = markers.filter(m => map.hasLayer(m.marker));
-    if (visible.length === 0) return;
-    const group = L.featureGroup(visible.map(v => v.marker));
-    map.fitBounds(group.getBounds().pad(0.2));
-  }
-
-  async function loadStations() {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    const fiStations = data.filter(s => s.countryCode === 'FI');
-
-    const select = document.getElementById('stationSelect');
-    fiStations.forEach(st => {
-      if (st.latitude == null || st.longitude == null) return;
-
-      const label = `${st.stationName} (${st.stationShortCode})`;
-      const marker = L.circleMarker([st.latitude, st.longitude], {
-        radius: markerRadius,
-        color: markerColor,
-        fillColor: markerColor,
-        fillOpacity: 0.85,
-        weight: 1
-      }).bindPopup(`<b>${st.stationName}</b><br/>Koodi: ${st.stationShortCode}<br/>Tyyppi: ${st.stationType || ''}`)
-        .bindTooltip(label, {permanent:true,direction:'top',offset:[0,-6],opacity:0.9,className:'stationLabel'});
-
-      marker.addTo(map);
-      markers.push({data: st, marker});
-
-      const option = document.createElement('option');
-      option.value = st.stationShortCode;
-      option.textContent = label;
-      select.appendChild(option);
-    });
-
-    setLabelsVisible(true);
-    fitToVisible();
-  }
-
-  function applySearch(q) {
-    const needle = normalize(q);
-    if (!needle) { showOnly(()=>true); fitToVisible(); return; }
-    showOnly(st => normalize(st.stationName).includes(needle) || normalize(st.stationShortCode).includes(needle));
-    fitToVisible();
-  }
-
-  document.getElementById('search').addEventListener('input', e=>applySearch(e.target.value));
-  document.getElementById('clear').addEventListener('click', ()=>{
-    document.getElementById('search').value='';
-    document.getElementById('stationSelect').selectedIndex=-1;
-    applySearch('');
+function showOnly(predicateFn){
+  markers.forEach(m=>{
+    const show = predicateFn(m.data);
+    if(show){ if(!map.hasLayer(m.marker)) m.marker.addTo(map); }
+    else{ if(map.hasLayer(m.marker)) map.removeLayer(m.marker); }
   });
-  document.getElementById('toggleLabels').addEventListener('change', e=>setLabelsVisible(e.target.checked));
+}
 
-  document.getElementById('stationSelect').addEventListener('change', e=>{
-    const selected = Array.from(e.target.selectedOptions).map(o=>o.value);
-    showOnly(st => selected.includes(st.stationShortCode));
-    fitToVisible();
+function fitToVisible(){
+  const visible = markers.filter(m=>map.hasLayer(m.marker));
+  if(visible.length===0) return;
+  const group = L.featureGroup(visible.map(v=>v.marker));
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+async function loadStations(){
+  const res = await fetch(API_URL);
+  const data = await res.json();
+  const fiStations = data.filter(s=>s.countryCode==='FI');
+
+  const select = document.getElementById('stationSelect');
+  fiStations.forEach(st=>{
+    if(st.latitude==null || st.longitude==null) return;
+
+    const label = `${st.stationName} (${st.stationShortCode})`;
+    const marker = L.circleMarker([st.latitude, st.longitude],{
+      radius: markerRadius,
+      color: markerColor,
+      fillColor: markerColor,
+      fillOpacity:0.85,
+      weight:1
+    })
+    .bindPopup(`<b>${st.stationName}</b><br/>Koodi: ${st.stationShortCode}<br/>Tyyppi: ${st.stationType || ''}`)
+    .bindTooltip(label,{permanent:true,direction:'top',offset:[0,-6],opacity:0.9,className:'stationLabel'});
+
+    marker.addTo(map);
+    markers.push({data:st,marker});
+
+    const option = document.createElement('option');
+    option.value = st.stationShortCode;
+    option.textContent = label;
+    select.appendChild(option);
   });
 
-  function updateMarkers() {
-    markers.forEach(m => {
-      m.marker.setStyle({radius: markerRadius,color:markerColor,fillColor:markerColor});
-      const tooltipEl = m.marker.getTooltip();
-      if (tooltipEl) tooltipEl._container.style.fontSize = fontSize+'px';
-    });
-  }
+  setLabelsVisible(true);
+  fitToVisible();
+}
 
-  document.getElementById('increaseFont').addEventListener('click', ()=>{ fontSize+=2; updateMarkers(); });
-  document.getElementById('decreaseFont').addEventListener('click', ()=>{ fontSize=Math.max(6,fontSize-2); updateMarkers(); });
-  document.getElementById('increaseMarker').addEventListener('click', ()=>{ markerRadius+=2; updateMarkers(); });
-  document.getElementById('decreaseMarker').addEventListener('click', ()=>{ markerRadius=Math.max(2,markerRadius-2); updateMarkers(); });
-  document.getElementById('changeColor').addEventListener('click', ()=>{
-    markerColor = markerColor === '#1f6feb' ? '#e63946' : '#1f6feb';
-    updateMarkers();
+function applySearch(q){
+  const needle = normalize(q);
+  if(!needle){ showOnly(()=>true); fitToVisible(); return; }
+  showOnly(st=>normalize(st.stationName).includes(needle) || normalize(st.stationShortCode).includes(needle));
+  fitToVisible();
+}
+
+document.getElementById('search').addEventListener('input', e=>applySearch(e.target.value));
+document.getElementById('clear').addEventListener('click', ()=>{
+  document.getElementById('search').value='';
+  document.getElementById('stationSelect').selectedIndex=-1;
+  applySearch('');
+});
+document.getElementById('toggleLabels').addEventListener('change', e=>setLabelsVisible(e.target.checked));
+
+document.getElementById('stationSelect').addEventListener('change', e=>{
+  const selected = Array.from(e.target.selectedOptions).map(o=>o.value);
+  showOnly(st=>selected.includes(st.stationShortCode));
+  fitToVisible();
+});
+
+function updateMarkers(){
+  markers.forEach(m=>{
+    m.marker.setStyle({radius:markerRadius,color:markerColor,fillColor:markerColor});
+    const tooltipEl = m.marker.getTooltip();
+    if(tooltipEl) tooltipEl._container.style.fontSize = fontSize+'px';
   });
+}
 
-  loadStations().catch(err=>console.error(err));
+document.getElementById('increaseFont').addEventListener('click', ()=>{ fontSize+=2; updateMarkers(); });
+document.getElementById('decreaseFont').addEventListener('click', ()=>{ fontSize=Math.max(6,fontSize-2); updateMarkers(); });
+document.getElementById('increaseMarker').addEventListener('click', ()=>{ markerRadius+=2; updateMarkers(); });
+document.getElementById('decreaseMarker').addEventListener('click', ()=>{ markerRadius=Math.max(2,markerRadius-2); updateMarkers(); });
+document.getElementById('changeColor').addEventListener('click', ()=>{
+  markerColor = markerColor==='#1f6feb' ? '#e63946' : '#1f6feb';
+  updateMarkers();
+});
 
-  // 🌐 Rataverkko (demo, paksumpi punainen viiva)
-  const exampleRail = {
-    "type": "FeatureCollection",
-    "features": [
-      { "type": "Feature",
-        "geometry": { "type": "LineString",
-                      "coordinates": [[24.935,60.169],[25.748,61.498],[27.700,62.241]] },
-        "properties": { "name":"Esimerkkirata" }
-      }
-    ]
-  };
-  L.geoJSON(exampleRail, {style:{color:'#ff0000',weight:4}}).addTo(map);
+loadStations().catch(err=>console.error(err));
 
+// 🌐 Rataverkko (demo)
+const exampleRail = {
+  "type":"FeatureCollection",
+  "features":[
+    {"type":"Feature",
+     "geometry":{"type":"LineString",
+                 "coordinates":[[24.935,60.169],[25.748,61.498],[27.700,62.241]]},
+     "properties":{"name":"Esimerkkirata"}}
+  ]
+};
+L.geoJSON(exampleRail,{style:{color:'#ff0000',weight:4}}).addTo(map);
 </script>
 
 </body>
