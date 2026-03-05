@@ -90,12 +90,19 @@ const map = L.map('map').setView([64.5, 26.0], 5);
 
 /* MML TAUSTAKARTTA */
 
-L.tileLayer(
-'https://wmts.geoportti.fi/wmts/taustakartta/wmts/1.0.0/taustakartta/default/GoogleMapsCompatible/{z}/{y}/{x}.png?api-key=bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f',
-{
-  attribution: "© Maanmittauslaitos",
-  maxZoom: 19
-}).addTo(map);
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<div id="map" style="height: 500px;"></div>
+
+<script>
+  var map = L.map('map').setView([60.17, 24.94], 13); // Helsinki
+
+  L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/Ortoilmakuva_2025/default/ETRS-TM35FIN/{z}/{y}/{x}.png', {
+    attribution: '© Maanmittauslaitos',
+    maxZoom: 19
+  }).addTo(map);
+</script>
 
 
 
@@ -239,4 +246,5 @@ loadStations();
 
 </body>
 </html>
+
 
