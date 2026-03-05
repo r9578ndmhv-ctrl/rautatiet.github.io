@@ -1,25 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8" />
-<title>Rataverkko</title>
+<meta charset="utf-8">
+<title>Rautatiekartta</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-#map{
-height:100vh;
-width:100%;
+
+body{
+margin:0;
+font-family:Arial;
 }
 
-/* häivytetään taustaa */
-.base-map{
-filter: grayscale(100%) brightness(1.2);
+#map{
+height:90vh;
 }
+
+#controls{
+padding:8px;
+background:white;
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="controls">
+
+Asemat:
+<select id="stationSelect" multiple size="5"></select>
+
+<button onclick="toggleNames()">Näytä/piilota nimet</button>
+
+<button onclick="textPlus()">Teksti +</button>
+<button onclick="textMinus()">Teksti -</button>
+
+<button onclick="ballPlus()">Pallo +</button>
+<button onclick="ballMinus()">Pallo -</button>
+
+<button onclick="changeColor()">Vaihda väri</button>
+
+</div>
 
 <div id="map"></div>
 
@@ -27,28 +50,156 @@ filter: grayscale(100%) brightness(1.2);
 
 <script>
 
-var map = L.map('map').setView([64.5,26],5);
+var map = L.map('map').setView([64,26],5);
 
-/* TAUSTAKARTTA */
+/* HAALEA MAASTOKARTTA */
 
-var base = L.tileLayer(
-"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+L.tileLayer(
+"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
 {
-attribution:"© OpenStreetMap",
-className:"base-map"
-}
-).addTo(map);
+attribution:"©OpenStreetMap ©Carto"
+}).addTo(map);
 
 
-/* RAUTATIEKERROS */
+/* RAUTATIEVERKKO */
 
-var railway = L.tileLayer(
+L.tileLayer(
 "https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
 {
-attribution:"© OpenRailwayMap",
 opacity:0.9
+}).addTo(map);
+
+
+
+/* ASEMAT */
+
+var stationsLayer = L.layerGroup().addTo(map);
+
+var stations=[];
+var markers=[];
+
+var textSize=14;
+var ballSize=6;
+var ballColor="blue";
+
+var showNames=true;
+
+
+
+fetch("https://rata.digitraffic.fi/api/v1/metadata/stations")
+.then(r=>r.json())
+.then(data=>{
+
+data
+.filter(s=>s.countryCode==="FI")
+.forEach(station=>{
+
+stations.push(station);
+
+var option=document.createElement("option");
+option.value=station.stationShortCode;
+option.text=station.stationName;
+
+document.getElementById("stationSelect").appendChild(option);
+
+});
+
+});
+
+
+document.getElementById("stationSelect").addEventListener("change",drawStations);
+
+
+function drawStations(){
+
+stationsLayer.clearLayers();
+markers=[];
+
+var selected=[...document.getElementById("stationSelect").selectedOptions]
+.map(o=>o.value);
+
+stations
+.filter(s=>selected.length==0 || selected.includes(s.stationShortCode))
+.forEach(station=>{
+
+var icon=L.divIcon({
+html:`
+<div style="
+color:${ballColor};
+font-size:${textSize}px;
+text-align:center;
+">
+<div style="
+width:${ballSize*2}px;
+height:${ballSize*2}px;
+background:${ballColor};
+border-radius:50%;
+margin:auto;
+"></div>
+${showNames?station.stationName:""}
+</div>
+`,
+className:""
+});
+
+var marker=L.marker(
+[station.latitude,station.longitude],
+{icon:icon}
+).addTo(stationsLayer);
+
+markers.push(marker);
+
+});
+
 }
-).addTo(map);
+
+
+
+/* NIMIEN NÄYTTÖ */
+
+function toggleNames(){
+showNames=!showNames;
+drawStations();
+}
+
+
+/* TEKSTIKOKO */
+
+function textPlus(){
+textSize+=2;
+drawStations();
+}
+
+function textMinus(){
+textSize-=2;
+drawStations();
+}
+
+
+/* PALLON KOKO */
+
+function ballPlus(){
+ballSize+=2;
+drawStations();
+}
+
+function ballMinus(){
+ballSize-=2;
+drawStations();
+}
+
+
+/* VÄRI */
+
+function changeColor(){
+
+var colors=["blue","red","green","orange","purple"];
+
+ballColor=colors[Math.floor(Math.random()*colors.length)];
+
+drawStations();
+
+}
 
 </script>
 
