@@ -14,12 +14,13 @@ font-family:Arial;
 }
 
 #map{
-height:90vh;
+height:88vh;
 }
 
 #controls{
 padding:8px;
 background:white;
+border-bottom:1px solid #ccc;
 }
 
 </style>
@@ -29,10 +30,18 @@ background:white;
 
 <div id="controls">
 
-Asemat:
-<select id="stationSelect" multiple size="5"></select>
+Karttapohja:
+<select id="basemap">
+<option value="normal">Normaali kartta</option>
+<option value="light">Haalea kartta</option>
+</select>
 
-<button onclick="toggleNames()">Näytä/piilota nimet</button>
+&nbsp;&nbsp;
+
+Asemat:
+<select id="stationSelect" multiple size="4"></select>
+
+<button onclick="toggleNames()">Nimet</button>
 
 <button onclick="textPlus()">Teksti +</button>
 <button onclick="textMinus()">Teksti -</button>
@@ -40,7 +49,7 @@ Asemat:
 <button onclick="ballPlus()">Pallo +</button>
 <button onclick="ballMinus()">Pallo -</button>
 
-<button onclick="changeColor()">Vaihda väri</button>
+<button onclick="changeColor()">Väri</button>
 
 </div>
 
@@ -52,21 +61,28 @@ Asemat:
 
 var map = L.map('map').setView([64,26],5);
 
-/* HAALEA MAASTOKARTTA */
 
-L.tileLayer(
+/* KARTTAPOHJAT */
+
+var normalMap = L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{ attribution:"© OpenStreetMap" }
+);
+
+var lightMap = L.tileLayer(
 "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-{
-attribution:"©OpenStreetMap ©Carto"
-}).addTo(map);
+{ attribution:"© Carto" }
+);
+
+normalMap.addTo(map);
 
 
-/* RAUTATIEVERKKO */
+/* RATAVERKKO */
 
-L.tileLayer(
+var railway = L.tileLayer(
 "https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
 {
-opacity:0.9
+opacity:0.85
 }).addTo(map);
 
 
@@ -76,12 +92,9 @@ opacity:0.9
 var stationsLayer = L.layerGroup().addTo(map);
 
 var stations=[];
-var markers=[];
-
 var textSize=14;
 var ballSize=6;
 var ballColor="blue";
-
 var showNames=true;
 
 
@@ -104,6 +117,8 @@ document.getElementById("stationSelect").appendChild(option);
 
 });
 
+drawStations();
+
 });
 
 
@@ -113,7 +128,6 @@ document.getElementById("stationSelect").addEventListener("change",drawStations)
 function drawStations(){
 
 stationsLayer.clearLayers();
-markers=[];
 
 var selected=[...document.getElementById("stationSelect").selectedOptions]
 .map(o=>o.value);
@@ -123,31 +137,27 @@ stations
 .forEach(station=>{
 
 var icon=L.divIcon({
+
 html:`
-<div style="
-color:${ballColor};
-font-size:${textSize}px;
-text-align:center;
-">
+<div style="text-align:center;color:${ballColor};font-size:${textSize}px">
 <div style="
 width:${ballSize*2}px;
 height:${ballSize*2}px;
 background:${ballColor};
 border-radius:50%;
-margin:auto;
-"></div>
+margin:auto"></div>
 ${showNames?station.stationName:""}
 </div>
 `,
+
 className:""
+
 });
 
-var marker=L.marker(
+L.marker(
 [station.latitude,station.longitude],
 {icon:icon}
 ).addTo(stationsLayer);
-
-markers.push(marker);
 
 });
 
@@ -155,7 +165,26 @@ markers.push(marker);
 
 
 
-/* NIMIEN NÄYTTÖ */
+/* KARTTAPOHJAN VAIHTO */
+
+document.getElementById("basemap").addEventListener("change",function(){
+
+map.removeLayer(normalMap);
+map.removeLayer(lightMap);
+
+if(this.value==="normal"){
+normalMap.addTo(map);
+}
+
+if(this.value==="light"){
+lightMap.addTo(map);
+}
+
+});
+
+
+
+/* NIMET */
 
 function toggleNames(){
 showNames=!showNames;
@@ -163,7 +192,7 @@ drawStations();
 }
 
 
-/* TEKSTIKOKO */
+/* TEKSTI */
 
 function textPlus(){
 textSize+=2;
@@ -176,7 +205,7 @@ drawStations();
 }
 
 
-/* PALLON KOKO */
+/* PALLO */
 
 function ballPlus(){
 ballSize+=2;
@@ -193,7 +222,7 @@ drawStations();
 
 function changeColor(){
 
-var colors=["blue","red","green","orange","purple"];
+var colors=["blue","red","green","orange","purple","black"];
 
 ballColor=colors[Math.floor(Math.random()*colors.length)];
 
