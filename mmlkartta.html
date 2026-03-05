@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="fi">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"/>
 <title>Rautatiekartta</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -10,17 +10,17 @@
 
 body{
 margin:0;
-font-family:Arial;
-}
-
-#map{
-height:88vh;
+font-family:system-ui,Arial;
 }
 
 #controls{
 padding:8px;
-background:white;
 border-bottom:1px solid #ccc;
+background:white;
+}
+
+#map{
+height:88vh;
 }
 
 </style>
@@ -30,15 +30,15 @@ border-bottom:1px solid #ccc;
 
 <div id="controls">
 
-Karttapohja:
+Karttapohja
 <select id="basemap">
-<option value="normal">Normaali kartta</option>
-<option value="light">Haalea kartta</option>
+<option value="normal">Normaali</option>
+<option value="light">Haalea</option>
 </select>
 
 &nbsp;&nbsp;
 
-Asemat:
+Asemat
 <select id="stationSelect" multiple size="4"></select>
 
 <button onclick="toggleNames()">Nimet</button>
@@ -59,19 +59,19 @@ Asemat:
 
 <script>
 
-var map = L.map('map').setView([64,26],5);
+const map=L.map("map").setView([64.5,26],5);
 
 
 /* KARTTAPOHJAT */
 
-var normalMap = L.tileLayer(
+const normalMap=L.tileLayer(
 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-{ attribution:"© OpenStreetMap" }
+{attribution:"© OpenStreetMap"}
 );
 
-var lightMap = L.tileLayer(
+const lightMap=L.tileLayer(
 "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-{ attribution:"© Carto" }
+{attribution:"© Carto"}
 );
 
 normalMap.addTo(map);
@@ -79,41 +79,38 @@ normalMap.addTo(map);
 
 /* RATAVERKKO */
 
-var railway = L.tileLayer(
+const railway=L.tileLayer(
 "https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
-{
-opacity:0.85
-}).addTo(map);
-
+{opacity:0.85}
+).addTo(map);
 
 
 /* ASEMAT */
 
-var stationsLayer = L.layerGroup().addTo(map);
+let stations=[];
+let markers=[];
 
-var stations=[];
-var textSize=14;
-var ballSize=6;
-var ballColor="blue";
-var showNames=true;
-
+let textSize=16;
+let ballSize=6;
+let ballColor="#1f6feb";
+let showNames=true;
 
 
 fetch("https://rata.digitraffic.fi/api/v1/metadata/stations")
 .then(r=>r.json())
 .then(data=>{
 
-data
-.filter(s=>s.countryCode==="FI")
-.forEach(station=>{
+stations=data.filter(s=>s.countryCode==="FI");
 
-stations.push(station);
+const select=document.getElementById("stationSelect");
 
-var option=document.createElement("option");
-option.value=station.stationShortCode;
-option.text=station.stationName;
+stations.forEach(st=>{
 
-document.getElementById("stationSelect").appendChild(option);
+const option=document.createElement("option");
+option.value=st.stationShortCode;
+option.text=st.stationName;
+
+select.appendChild(option);
 
 });
 
@@ -122,42 +119,47 @@ drawStations();
 });
 
 
-document.getElementById("stationSelect").addEventListener("change",drawStations);
+document.getElementById("stationSelect")
+.addEventListener("change",drawStations);
+
 
 
 function drawStations(){
 
-stationsLayer.clearLayers();
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
 
-var selected=[...document.getElementById("stationSelect").selectedOptions]
+const selected=[...document.getElementById("stationSelect").selectedOptions]
 .map(o=>o.value);
 
 stations
-.filter(s=>selected.length==0 || selected.includes(s.stationShortCode))
-.forEach(station=>{
+.filter(s=>selected.length===0 || selected.includes(s.stationShortCode))
+.forEach(st=>{
 
-var icon=L.divIcon({
+const marker=L.circleMarker(
+[st.latitude,st.longitude],
+{
+radius:ballSize,
+color:ballColor,
+fillColor:ballColor,
+fillOpacity:0.9,
+weight:1
+}
+).addTo(map);
 
-html:`
-<div style="text-align:center;color:${ballColor};font-size:${textSize}px">
-<div style="
-width:${ballSize*2}px;
-height:${ballSize*2}px;
-background:${ballColor};
-border-radius:50%;
-margin:auto"></div>
-${showNames?station.stationName:""}
-</div>
-`,
+const tooltip=marker.bindTooltip(
+`${st.stationName} (${st.stationShortCode})`,
+{
+permanent:showNames,
+direction:"top",
+offset:[0,-6],
+opacity:0.9
+}
+);
 
-className:""
+tooltip.getElement()?.style && (tooltip.getElement().style.fontSize=textSize+"px");
 
-});
-
-L.marker(
-[station.latitude,station.longitude],
-{icon:icon}
-).addTo(stationsLayer);
+markers.push(marker);
 
 });
 
@@ -165,56 +167,60 @@ L.marker(
 
 
 
-/* KARTTAPOHJAN VAIHTO */
+/* KARTTAPOHJA */
 
 document.getElementById("basemap").addEventListener("change",function(){
 
 map.removeLayer(normalMap);
 map.removeLayer(lightMap);
 
-if(this.value==="normal"){
-normalMap.addTo(map);
-}
-
-if(this.value==="light"){
-lightMap.addTo(map);
-}
+if(this.value==="normal") normalMap.addTo(map);
+if(this.value==="light") lightMap.addTo(map);
 
 });
-
 
 
 /* NIMET */
 
 function toggleNames(){
+
 showNames=!showNames;
 drawStations();
+
 }
 
 
 /* TEKSTI */
 
 function textPlus(){
+
 textSize+=2;
 drawStations();
+
 }
 
 function textMinus(){
+
 textSize-=2;
 drawStations();
+
 }
 
 
 /* PALLO */
 
 function ballPlus(){
+
 ballSize+=2;
 drawStations();
+
 }
 
 function ballMinus(){
+
 ballSize-=2;
 drawStations();
+
 }
 
 
@@ -222,7 +228,14 @@ drawStations();
 
 function changeColor(){
 
-var colors=["blue","red","green","orange","purple","black"];
+const colors=[
+"#1f6feb",
+"red",
+"green",
+"orange",
+"purple",
+"black"
+];
 
 ballColor=colors[Math.floor(Math.random()*colors.length)];
 
