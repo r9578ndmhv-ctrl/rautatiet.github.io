@@ -1,57 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fi">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Suomen rautatiekartta</title>
+<title>Suomen rataverkko</title>
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body {margin:0;font-family:system-ui,Arial;}
-#topbar{
-padding:8px;
-background:white;
-border-bottom:1px solid #ddd;
-display:flex;
-flex-wrap:wrap;
-gap:8px;
-align-items:center;
+html, body {
+  height:100%;
+  margin:0;
+  font-family: Arial, sans-serif;
 }
-#map{height:calc(100vh - 60px);}
-button,input,select{padding:4px 8px;font-size:14px;}
 
-.station-label{
-font-weight:600;
-color:#111;
+#map{
+  width:100%;
+  height:100%;
+}
+
+/* Himmennetään taustakarttaa */
+.leaflet-tile {
+  filter: grayscale(100%) brightness(1.2) contrast(0.8);
+}
+
+/* Hakulaatikko */
+#controls{
+  position:absolute;
+  top:10px;
+  left:50px;
+  z-index:1000;
+  background:white;
+  padding:8px;
+  border-radius:6px;
+  box-shadow:0 0 6px rgba(0,0,0,0.3);
+}
+
+#stationSearch{
+  width:220px;
+  padding:4px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="topbar">
-
-<input id="search" placeholder="Hae asemaa">
-
-<select id="stationSelect" multiple size="5"></select>
-
-<button id="clear">Näytä kaikki</button>
-
-<label>
-<input id="toggleLabels" type="checkbox" checked>
-Näytä nimet
-</label>
-
-<button id="incFont">Teksti +</button>
-<button id="decFont">Teksti -</button>
-
-<button id="incMarker">Pallo +</button>
-<button id="decMarker">Pallo -</button>
-
-<button id="toggleColor">Vaihda väri</button>
-
+<div id="controls">
+Asema: <input id="stationSearch" placeholder="Kirjoita aseman nimi">
 </div>
 
 <div id="map"></div>
@@ -60,213 +54,81 @@ Näytä nimet
 
 <script>
 
-// kartta
-const map = L.map('map').setView([64.5,26],5);
+var map = L.map('map').setView([64.5, 26], 5);
 
-// karttatasot
-
-const railwayMap = L.tileLayer(
-'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
-{
-maxZoom:19,
-attribution:'© OpenRailwayMap / OpenStreetMap'
-});
-
-const osm = L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom:19,
-attribution:'© OpenStreetMap'
-});
-
-// oletus
-railwayMap.addTo(map);
-
-// layer control
-L.control.layers({
-"Rautatiekartta":railwayMap,
-"Normaali kartta":osm
-}).addTo(map);
+/* Taustakartta */
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    attribution:'© OpenStreetMap'
+  }
+).addTo(map);
 
 
-// asetukset
-let markers=[];
-let fontSize=12;
-let markerRadius=6;
-let markerColor="#1f6feb";
+/* RATAVERKKO (OpenRailwayMap) */
+var railLayer = L.tileLayer(
+  "https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+  {
+    attribution:'© OpenRailwayMap'
+  }
+);
 
-function updateMarkers(){
-
-markers.forEach(m=>{
-
-m.setStyle({
-radius:markerRadius,
-color:markerColor,
-fillColor:markerColor
-});
-
-const tooltip=m.getTooltip();
-
-if(tooltip && tooltip._container){
-tooltip._container.style.fontSize=fontSize+"px";
-}
-
-});
-
-}
+railLayer.addTo(map);
 
 
-// asemien lataus
-fetch("https://rata.digitraffic.fi/api/v1/metadata/stations")
-.then(r=>r.json())
-.then(data=>{
+/* ASEMAT */
+var stations = [
+["Helsinki",60.1719,24.9414],
+["Pasila",60.1986,24.9336],
+["Tampere",61.4981,23.7735],
+["Turku",60.4518,22.2666],
+["Oulu",65.0121,25.4651],
+["Jyväskylä",62.2426,25.7473],
+["Kuopio",62.8924,27.6782],
+["Seinäjoki",62.7903,22.8403]
+];
 
-const stations=data.filter(s=>s.countryCode==="FI");
+var markers = {};
 
-const select=document.getElementById("stationSelect");
+stations.forEach(function(s){
 
-stations.forEach(st=>{
+  var m = L.circleMarker(
+    [s[1],s[2]],
+    {
+      radius:6,
+      color:"#000",
+      weight:1,
+      fillColor:"#ffcc00",
+      fillOpacity:1
+    }
+  ).addTo(map);
 
-if(!st.latitude || !st.longitude) return;
+  m.bindPopup(s[0]);
 
-const label=`${st.stationName} (${st.stationShortCode})`;
-
-const marker=L.circleMarker(
-[st.latitude,st.longitude],
-{
-radius:markerRadius,
-color:markerColor,
-fillColor:markerColor,
-fillOpacity:0.85
-});
-
-marker.bindTooltip(label,{
-permanent:true,
-direction:"top",
-className:"station-label"
-});
-
-marker.addTo(map);
-
-markers.push(marker);
-
-const option=document.createElement("option");
-
-option.value=st.stationShortCode;
-option.textContent=label;
-
-select.appendChild(option);
-
-});
+  markers[s[0].toLowerCase()] = m;
 
 });
 
 
-// haku
-document.getElementById("search").oninput=e=>{
+/* ASEMAHAKU */
 
-const q=e.target.value.toLowerCase();
+var input = document.getElementById("stationSearch");
 
-markers.forEach(m=>{
+input.addEventListener("change",function(){
 
-const label=m.getTooltip().getContent().toLowerCase();
+  var name = input.value.toLowerCase();
 
-if(!q || label.includes(q)){
-m.addTo(map);
-}
-else{
-map.removeLayer(m);
-}
+  if(markers[name]){
 
-});
+    var marker = markers[name];
 
-};
+    map.setView(marker.getLatLng(),10);
 
+    marker.openPopup();
 
-// valinta
-document.getElementById("stationSelect").onchange=e=>{
-
-const vals=[...e.target.selectedOptions].map(o=>o.value);
-
-markers.forEach(m=>{
-
-const code=m.getTooltip().getContent()
-.split("(")[1].replace(")","");
-
-if(vals.length && !vals.includes(code)){
-map.removeLayer(m);
-}
-else{
-m.addTo(map);
-}
+  }
 
 });
-
-};
-
-
-// näytä kaikki
-document.getElementById("clear").onclick=()=>{
-
-document.getElementById("search").value="";
-document.getElementById("stationSelect").selectedIndex=-1;
-
-markers.forEach(m=>m.addTo(map));
-
-};
-
-
-// nimet päälle/pois
-document.getElementById("toggleLabels").onchange=e=>{
-
-markers.forEach(m=>{
-
-if(e.target.checked){
-m.openTooltip();
-}else{
-m.closeTooltip();
-}
-
-});
-
-};
-
-
-// tekstikoko
-document.getElementById("incFont").onclick=()=>{
-fontSize+=2;
-updateMarkers();
-};
-
-document.getElementById("decFont").onclick=()=>{
-fontSize=Math.max(6,fontSize-2);
-updateMarkers();
-};
-
-
-// pallon koko
-document.getElementById("incMarker").onclick=()=>{
-markerRadius+=2;
-updateMarkers();
-};
-
-document.getElementById("decMarker").onclick=()=>{
-markerRadius=Math.max(2,markerRadius-2);
-updateMarkers();
-};
-
-
-// väri
-document.getElementById("toggleColor").onclick=()=>{
-
-markerColor =
-markerColor === "#1f6feb"
-? "#e63946"
-: "#1f6feb";
-
-updateMarkers();
-
-};
 
 </script>
 
