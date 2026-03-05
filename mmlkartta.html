@@ -5,7 +5,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Selkeä Rautatiekartta</title>
 
-  <link
+  <link<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Suomen rautatiekartta</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+body {margin:0;font-family:system-ui,Arial;}
+#topbar{
+padding:8px;
+background:white;
+border-bottom:1px solid #ddd;
+display:flex;
+flex-wrap:wrap;
+gap:8px;
+align-items:center;
+}
+#map{height:calc(100vh - 60px);}
+button,input,select{padding:4px 8px;font-size:14px;}
+
+.station-label{
+font-weight:600;
+color:#111;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+
+<input id="search" placeholder="Hae asemaa">
+
+<select id="stationSelect" multiple size="5"></select>
+
+<button id="clear">Näytä kaikki</button>
+
+<label>
+<input id="toggleLabels" type="checkbox" checked>
+Näytä nimet
+</label>
+
+<button id="incFont">Teksti +</button>
+<button id="decFont">Teksti -</button>
+
+<button id="incMarker">Pallo +</button>
+<button id="decMarker">Pallo -</button>
+
+<button id="toggleColor">Vaihda väri</button>
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+// kartta
+const map = L.map('map').setView([64.5,26],5);
+
+// karttatasot
+
+const railwayMap = L.tileLayer(
+'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+{
+maxZoom:19,
+attribution:'© OpenRailwayMap / OpenStreetMap'
+});
+
+const osm = L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19,
+attribution:'© OpenStreetMap'
+});
+
+// oletus
+railwayMap.addTo(map);
+
+// layer control
+L.control.layers({
+"Rautatiekartta":railwayMap,
+"Normaali kartta":osm
+}).addTo(map);
+
+
+// asetukset
+let markers=[];
+let fontSize=12;
+let markerRadius=6;
+let markerColor="#1f6feb";
+
+function updateMarkers(){
+
+markers.forEach(m=>{
+
+m.setStyle({
+radius:markerRadius,
+color:markerColor,
+fillColor:markerColor
+});
+
+const tooltip=m.getTooltip();
+
+if(tooltip && tooltip._container){
+tooltip._container.style.fontSize=fontSize+"px";
+}
+
+});
+
+}
+
+
+// asemien lataus
+fetch("https://rata.digitraffic.fi/api/v1/metadata/stations")
+.then(r=>r.json())
+.then(data=>{
+
+const stations=data.filter(s=>s.countryCode==="FI");
+
+const select=document.getElementById("stationSelect");
+
+stations.forEach(st=>{
+
+if(!st.latitude || !st.longitude) return;
+
+const label=`${st.stationName} (${st.stationShortCode})`;
+
+const marker=L.circleMarker(
+[st.latitude,st.longitude],
+{
+radius:markerRadius,
+color:markerColor,
+fillColor:markerColor,
+fillOpacity:0.85
+});
+
+marker.bindTooltip(label,{
+permanent:true,
+direction:"top",
+className:"station-label"
+});
+
+marker.addTo(map);
+
+markers.push(marker);
+
+const option=document.createElement("option");
+
+option.value=st.stationShortCode;
+option.textContent=label;
+
+select.appendChild(option);
+
+});
+
+});
+
+
+// haku
+document.getElementById("search").oninput=e=>{
+
+const q=e.target.value.toLowerCase();
+
+markers.forEach(m=>{
+
+const label=m.getTooltip().getContent().toLowerCase();
+
+if(!q || label.includes(q)){
+m.addTo(map);
+}
+else{
+map.removeLayer(m);
+}
+
+});
+
+};
+
+
+// valinta
+document.getElementById("stationSelect").onchange=e=>{
+
+const vals=[...e.target.selectedOptions].map(o=>o.value);
+
+markers.forEach(m=>{
+
+const code=m.getTooltip().getContent()
+.split("(")[1].replace(")","");
+
+if(vals.length && !vals.includes(code)){
+map.removeLayer(m);
+}
+else{
+m.addTo(map);
+}
+
+});
+
+};
+
+
+// näytä kaikki
+document.getElementById("clear").onclick=()=>{
+
+document.getElementById("search").value="";
+document.getElementById("stationSelect").selectedIndex=-1;
+
+markers.forEach(m=>m.addTo(map));
+
+};
+
+
+// nimet päälle/pois
+document.getElementById("toggleLabels").onchange=e=>{
+
+markers.forEach(m=>{
+
+if(e.target.checked){
+m.openTooltip();
+}else{
+m.closeTooltip();
+}
+
+});
+
+};
+
+
+// tekstikoko
+document.getElementById("incFont").onclick=()=>{
+fontSize+=2;
+updateMarkers();
+};
+
+document.getElementById("decFont").onclick=()=>{
+fontSize=Math.max(6,fontSize-2);
+updateMarkers();
+};
+
+
+// pallon koko
+document.getElementById("incMarker").onclick=()=>{
+markerRadius+=2;
+updateMarkers();
+};
+
+document.getElementById("decMarker").onclick=()=>{
+markerRadius=Math.max(2,markerRadius-2);
+updateMarkers();
+};
+
+
+// väri
+document.getElementById("toggleColor").onclick=()=>{
+
+markerColor =
+markerColor === "#1f6feb"
+? "#e63946"
+: "#1f6feb";
+
+updateMarkers();
+
+};
+
+</script>
+
+</body>
+</html>
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
@@ -134,3 +407,4 @@ L.geoJSON(rail,{style:{color:'#ff0000',weight:4}}).addTo(map);
 </script>
 </body>
 </html>
+
