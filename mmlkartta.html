@@ -84,12 +84,15 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-const map = L.map('map').setView([64.5, 26.0], 5);
+const osm = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 19, attribution: '&copy; OpenStreetMap' }
+).addTo(map);
 
-L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenRailwayMap / OpenStreetMap'
-}).addTo(map);
+const rail = L.tileLayer(
+  'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+  { maxZoom: 19, attribution: '© OpenRailwayMap' }
+).addTo(map);
 
 const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
 
@@ -233,3 +236,4 @@ loadStations();
 
 </body>
 </html>
+
