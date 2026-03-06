@@ -84,21 +84,14 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-const osm = L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { maxZoom: 19, attribution: '&copy; OpenStreetMap' }
-).addTo(map);
-
-const base = L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+const baseMap = L.tileLayer(
+  'https://tiles.kartat.kapsi.fi/peruskartta/{z}/{x}/{y}.png',
   {
     maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    attribution: '© Maanmittauslaitos'
   }
 ).addTo(map);
-
-/* Rautatieverkko päälle */
-const rail = L.tileLayer(
+      const railLayer = L.tileLayer(
   'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
   {
     maxZoom: 19,
@@ -248,5 +241,6 @@ loadStations();
 
 </body>
 </html>
+
 
 
