@@ -84,9 +84,12 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-      const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
+// Määritä API-avaimesi tähän (voit myös laittaa sen muuttujaan ulkopuolelle turvallisuussyistä)
+const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
+
 const map = L.map('map').setView([64.5, 26.0], 5);
 
+// Korvaa tämä rivi alla olevalla MML-taustakartalla
 L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f, {
   maxZoom: 16,                    // Avoimen taustakartan tyypillinen maksimi (yleensä 16, joskus 17)
   minZoom: 0,
@@ -94,6 +97,7 @@ L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taus
   // opacity: 0.95,               // voit säätää läpinäkyvyyttä jos haluat
   // tileSize: 256,               // yleensä oletusarvo riittää
 }).addTo(map);
+</script>
 
 const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
 
@@ -237,6 +241,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
