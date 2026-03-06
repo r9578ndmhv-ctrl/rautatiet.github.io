@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asemakartta</title>
+<title>Rautatieasemat kartalla</title>
 
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -84,15 +84,18 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+// Määritä API-avaimesi muuttujaksi (älä kirjoita suoraan URL:iin!)
 const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
 
-const map = L.map('map').setView([64.5, 26.0], 5);
+const map = L.map('map').setView([64.5, 26.0], 10);
 
-// Korvaa tämä rivi alla olevalla MML-taustakartalla
-L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f, {
-
-  maxZoom: 18,
-  attribution: '&copy; Maanmittauslaitos'
+L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + apiKey, {
+  maxZoom: 16,
+  minZoom: 0,
+  attribution: '© Maanmittauslaitos',
+  // Voit lisätä nämä testatessasi:
+  // opacity: 0.9,
+  // errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' // tyhjä tile jos virhe
 }).addTo(map);
 
 const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
@@ -147,8 +150,6 @@ function updateSizes() {
   });
 }
 
-async function loadStations() {
-  const res = await fetch(API_URL);
   const dataRaw = await res.json();
 
   const data = dataRaw.filter(st => st.countryCode === "FI");
@@ -237,3 +238,13 @@ loadStations();
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
