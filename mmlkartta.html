@@ -84,20 +84,26 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-const baseMap = L.tileLayer(
-  'https://tiles.kartat.kapsi.fi/peruskartta/{z}/{x}/{y}.png',
-  {
-    maxZoom: 19,
-    attribution: '© Maanmittauslaitos'
-  }
-).addTo(map);
-      const railLayer = L.tileLayer(
+// Normaalikartta
+const osm = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '&copy; OpenStreetMap' }
+);
+
+// Rautatiekartta
+const rail = L.tileLayer(
   'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
-  {
-    maxZoom: 19,
-    attribution: '© OpenRailwayMap'
-  }
-).addTo(map);
+  { attribution: '&copy; OpenRailwayMap, OpenStreetMap contributors' }
+);
+
+// oletus
+rail.addTo(map);
+
+// karttavalitsin
+L.control.layers({
+  "Rautatiekartta": rail,
+  "Normaali kartta": osm
+}).addTo(map);
 
 const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
 
@@ -241,6 +247,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
