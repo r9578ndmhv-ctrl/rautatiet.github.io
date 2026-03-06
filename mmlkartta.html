@@ -84,12 +84,8 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Määritä API-avaimesi tähän (voit myös laittaa sen muuttujaan ulkopuolelle turvallisuussyistä)
-const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
-
 const map = L.map('map').setView([64.5, 26.0], 5);
 
-// Korvaa tämä rivi alla olevalla MML-taustakartalla
 L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f, {
   maxZoom: 16,                    // Avoimen taustakartan tyypillinen maksimi (yleensä 16, joskus 17)
   minZoom: 0,
@@ -240,5 +236,6 @@ loadStations();
 
 </body>
 </html>
+
 
 
