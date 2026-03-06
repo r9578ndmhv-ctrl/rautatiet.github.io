@@ -150,22 +150,46 @@ function updateSizes() {
   });
 }
 
-async function loadStations() {  // ← async puuttui!
+async function loadStations() {
   try {
     const res = await fetch(API_URL);
     if (!res.ok) {
-      throw new Error(`Digitraffic-virhe: ${res.status}`);
+      throw new Error(`Digitraffic palautti virheen: ${res.status} ${res.statusText}`);
     }
     const dataRaw = await res.json();
     const data = dataRaw.filter(st => st.countryCode === "FI");
-    data.sort((a,b) => a.stationName.localeCompare(b.stationName));
-    // ... loput forEach-looppi, markerit, select-optiot jne. sama kuin ennen
+    data.sort((a, b) => a.stationName.localeCompare(b.stationName));
+    data.forEach(st => {
+      if (!st.latitude || !st.longitude) return;
+      const marker = L.circleMarker([st.latitude, st.longitude], {
+        radius: 8,
+        color: markerColor,
+        fillColor: markerColor,
+        fillOpacity: 0.9,
+        weight: 1
+      });
+      marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
+      marker.bindTooltip(
+        `${st.stationName} (${st.stationShortCode})`,
+        { permanent: true, direction: 'top', offset: [0, -6], className: 'station-label' }
+      );
+      marker.addTo(map);
+      markers.push({ data: st, marker });
+      const option = new Option(
+        `${st.stationName} (${st.stationShortCode})`,
+        st.stationShortCode,
+        false,
+        false
+      );
+      $('#stationSelect').append(option);
+    });
     fitToVisible();
     updateTooltips();
     updateSizes();
   } catch (error) {
     console.error('Asemien lataus epäonnistui:', error);
-    // Voit lisätä alert("Asemat eivät latautuneet – tarkista yhteys") jos haluat
+    // Voit lisätä näkyvän ilmoituksen käyttäjälle, esim.:
+    // alert('Asemat eivät latautuneet. Tarkista internet-yhteys tai kokeile myöhemmin.');
   }
 }
 
@@ -252,6 +276,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
