@@ -84,18 +84,18 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// Määritä API-avaimesi tähän (voit myös laittaa sen muuttujaan ulkopuolelle turvallisuussyistä)
+// Määritä API-avaimesi muuttujaksi (älä kirjoita suoraan URL:iin!)
 const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
 
 const map = L.map('map').setView([64.5, 26.0], 5);
 
-// Korvaa tämä rivi alla olevalla MML-taustakartalla
-L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f, {
-  maxZoom: 16,                    // Avoimen taustakartan tyypillinen maksimi (yleensä 16, joskus 17)
+L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=' + apiKey, {
+  maxZoom: 16,
   minZoom: 0,
   attribution: '© Maanmittauslaitos',
-  // opacity: 0.95,               // voit säätää läpinäkyvyyttä jos haluat
-  // tileSize: 256,               // yleensä oletusarvo riittää
+  // Voit lisätä nämä testatessasi:
+  // opacity: 0.9,
+  // errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' // tyhjä tile jos virhe
 }).addTo(map);
 </script>
 
@@ -241,6 +241,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
