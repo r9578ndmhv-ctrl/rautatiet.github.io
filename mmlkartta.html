@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Rautatieasemat kartalla</title>
+<title>Asemakartta</title>
 
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -84,19 +84,16 @@ button {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// API-avain
-const apiKey = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
-
-// kartta
 const map = L.map('map').setView([64.5, 26.0], 5);
 
-// MML taustakartta
-L.tileLayer(
-'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/GoogleMapsCompatible/{z}/{x}/{y}.png?api-key=' + bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f,
-{
-  maxZoom: 18,
-  attribution: '© Maanmittauslaitos'
-}).addTo(map);
+// Maanmittauslaitos avoin taustakartta (WMTS, Web Mercator -projektio sopii Leafletille parhaiten)
+L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f', {
+    maxZoom: 19,          // MML taustakartta menee yleensä ~18–19 tasolle
+    minZoom: 0,
+    attribution: 'Taustakartta © Maanmittauslaitos, avoin data CC BY 4.0',
+    tileSize: 256,
+    // subdomains ei tarvita, api-key hoitaa autentikoinnin
+}).addTo(map);;
 
 const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
 
@@ -151,47 +148,11 @@ function updateSizes() {
 }
 
 async function loadStations() {
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) {
-      throw new Error(`Digitraffic palautti virheen: ${res.status} ${res.statusText}`);
-    }
-    const dataRaw = await res.json();
-    const data = dataRaw.filter(st => st.countryCode === "FI");
-    data.sort((a, b) => a.stationName.localeCompare(b.stationName));
-    data.forEach(st => {
-      if (!st.latitude || !st.longitude) return;
-      const marker = L.circleMarker([st.latitude, st.longitude], {
-        radius: 8,
-        color: markerColor,
-        fillColor: markerColor,
-        fillOpacity: 0.9,
-        weight: 1
-      });
-      marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
-      marker.bindTooltip(
-        `${st.stationName} (${st.stationShortCode})`,
-        { permanent: true, direction: 'top', offset: [0, -6], className: 'station-label' }
-      );
-      marker.addTo(map);
-      markers.push({ data: st, marker });
-      const option = new Option(
-        `${st.stationName} (${st.stationShortCode})`,
-        st.stationShortCode,
-        false,
-        false
-      );
-      $('#stationSelect').append(option);
-    });
-    fitToVisible();
-    updateTooltips();
-    updateSizes();
-  } catch (error) {
-    console.error('Asemien lataus epäonnistui:', error);
-    // Voit lisätä näkyvän ilmoituksen käyttäjälle, esim.:
-    // alert('Asemat eivät latautuneet. Tarkista internet-yhteys tai kokeile myöhemmin.');
-  }
-}
+  const res = await fetch(API_URL);
+  const dataRaw = await res.json();
+
+  const data = dataRaw.filter(st => st.countryCode === "FI");
+  data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
 
   data.forEach(st => {
     if (!st.latitude || !st.longitude) return;
@@ -276,19 +237,3 @@ loadStations();
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
