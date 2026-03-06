@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asemakartta</title>
+<title>Rautatieasemat kartalla</title>
 
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -150,8 +150,6 @@ function updateSizes() {
   });
 }
 
-async function loadStations() {
-  const res = await fetch(API_URL);
   const dataRaw = await res.json();
 
   const data = dataRaw.filter(st => st.countryCode === "FI");
@@ -240,6 +238,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
