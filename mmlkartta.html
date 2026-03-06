@@ -1,212 +1,235 @@
 <!doctype html>
 <html lang="fi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Asemakartta</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <style>
-    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    #topbar {
-      padding:10px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-      border-bottom:1px solid #ddd;
-    }
-    #map { height: calc(100vh - 90px); }
-    .station-label {
-      font-weight:600;
-      background:white;
-      border:1px solid #ccc;
-      border-radius:4px;
-      padding:2px 6px;
-    }
-    .control-group {
-      display:flex;
-      align-items:center;
-      gap:4px;
-    }
-    button { cursor:pointer; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Asemakartta</title>
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+
+#topbar {
+  padding:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  border-bottom:1px solid #ddd;
+}
+
+#map { height:calc(100vh - 90px); }
+
+.station-label {
+  font-weight:600;
+  background:white;
+  border:1px solid #ccc;
+  border-radius:4px;
+  padding:2px 6px;
+}
+
+.control-group {
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+button {
+  cursor:pointer;
+}
+</style>
 </head>
+
 <body>
-  <div id="topbar">
-    <select id="stationSelect" multiple style="min-width:300px;"></select>
-    <button id="clear">Näytä kaikki</button>
-    <label>
-      <input id="toggleLabels" type="checkbox" checked> Näytä nimet
-    </label>
-    <div class="control-group">
-      Teksti:
-      <button id="textMinus">−</button>
-      <button id="textPlus">+</button>
-    </div>
-    <div class="control-group">
-      Pallo:
-      <button id="markerMinus">−</button>
-      <button id="markerPlus">+</button>
-    </div>
-    <div class="control-group">
-      Väri:
-      <input type="color" id="colorPicker" value="#1f6feb">
-    </div>
-  </div>
-  <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    // Käynnistetään kartta Suomessa sopivalla keskellä ja zoomilla
-    const map = L.map('map').setView([64.5, 26.0], 5);
+<div id="topbar">
 
-    // Toimiva MML ortokuva (uusin saatavilla oleva) – toimii maaliskuussa 2026
-    L.tileLayer('https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/ortokuva/default/ETRS-TM35FIN/{z}/{y}/{x}.png', {
-      attribution: '© Maanmittauslaitos',
-      maxZoom: 16,          // ortokuva menee yleensä max ~15–16
-      minZoom: 0,
-      tileSize: 256,
-      // crossOrigin: 'anonymous'  // jos CORS-ongelmia ilmenee
-    }).addTo(map);
+<select id="stationSelect" multiple style="min-width:300px;"></select>
+<button id="clear">Näytä kaikki</button>
 
-    // Vaihtoehtoisesti parempi fallback: OpenStreetMap (jos MML ei jostain syystä toimi)
-    // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    //   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    //   maxZoom: 19
-    // }).addTo(map);
+<label>
+  <input id="toggleLabels" type="checkbox" checked>
+  Näytä nimet
+</label>
 
-    const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
-    const markers = [];
-    let labelsVisible = true;
-    let textScale = 1;
-    let markerScale = 1;
-    let markerColor = "#1f6feb";
+<div class="control-group">
+  Teksti:
+  <button id="textMinus">−</button>
+  <button id="textPlus">+</button>
+</div>
 
-    function fitToVisible() {
-      const visible = markers.filter(m => map.hasLayer(m.marker));
-      if (!visible.length) return;
-      const group = L.featureGroup(visible.map(v => v.marker));
-      map.fitBounds(group.getBounds().pad(0.2));
+<div class="control-group">
+  Pallo:
+  <button id="markerMinus">−</button>
+  <button id="markerPlus">+</button>
+</div>
+
+<div class="control-group">
+  Väri:
+  <input type="color" id="colorPicker" value="#00B451">
+</div>
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+const map = L.map('map').setView([64.5, 26.0], 5);
+
+L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenRailwayMap / OpenStreetMap'
+}).addTo(map);
+
+const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
+
+const markers = [];
+let labelsVisible = true;
+
+let textScale = 1;
+let markerScale = 1;
+let markerColor = "#00B451";
+
+function fitToVisible() {
+  const visible = markers.filter(m => map.hasLayer(m.marker));
+  if (!visible.length) return;
+  const group = L.featureGroup(visible.map(v => v.marker));
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+function showOnly(predicateFn) {
+  markers.forEach(m => {
+    const show = predicateFn(m.data);
+    if (show) {
+      if (!map.hasLayer(m.marker)) m.marker.addTo(map);
+    } else {
+      if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
     }
+  });
+}
 
-    function showOnly(predicateFn) {
-      markers.forEach(m => {
-        const show = predicateFn(m.data);
-        if (show) {
-          if (!map.hasLayer(m.marker)) m.marker.addTo(map);
-        } else {
-          if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
-        }
-      });
+function updateTooltips() {
+  markers.forEach(m => {
+    if (labelsVisible && map.hasLayer(m.marker)) {
+      m.marker.openTooltip();
+    } else {
+      m.marker.closeTooltip();
     }
+  });
+}
 
-    function updateTooltips() {
-      markers.forEach(m => {
-        if (labelsVisible && map.hasLayer(m.marker)) {
-          m.marker.openTooltip();
-        } else {
-          m.marker.closeTooltip();
-        }
-      });
-    }
+function updateSizes() {
+  const zoom = map.getZoom();
 
-    function updateSizes() {
-      const zoom = map.getZoom();
-      const radius = Math.max(4, zoom * 1.5 * markerScale);
-      const fontSize = Math.max(12, zoom * 1.6 * textScale);
-      markers.forEach(m => {
-        m.marker.setRadius(radius);
-        m.marker.setStyle({ color: markerColor, fillColor: markerColor });
-        const el = m.marker.getTooltip()?.getElement();
-        if (el) el.style.fontSize = fontSize + "px";
-      });
-    }
+  const radius = Math.max(4, zoom * 1.5 * markerScale);
+  const fontSize = Math.max(12, zoom * 1.6 * textScale);
 
-    async function loadStations() {
-      try {
-        const res = await fetch(API_URL);
-        if (!res.ok) throw new Error('Asemien haku epäonnistui');
-        const dataRaw = await res.json();
-        const data = dataRaw.filter(st => st.countryCode === "FI");
-        data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
+  markers.forEach(m => {
+    m.marker.setRadius(radius);
+    m.marker.setStyle({ color: markerColor, fillColor: markerColor });
 
-        data.forEach(st => {
-          if (!st.latitude || !st.longitude) return;
-          const marker = L.circleMarker([st.latitude, st.longitude], {
-            radius: 8,
-            color: markerColor,
-            fillColor: markerColor,
-            fillOpacity: 0.9,
-            weight: 1
-          });
-          marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
-          marker.bindTooltip(
-            `${st.stationName} (${st.stationShortCode})`,
-            { permanent: true, direction: 'top', offset: [0, -6], className: 'station-label' }
-          );
-          marker.addTo(map);
-          markers.push({ data: st, marker });
+    const el = m.marker.getTooltip()?.getElement();
+    if (el) el.style.fontSize = fontSize + "px";
+  });
+}
 
-          const option = new Option(
-            `${st.stationName} (${st.stationShortCode})`,
-            st.stationShortCode,
-            false, false
-          );
-          $('#stationSelect').append(option);
-        });
+async function loadStations() {
+  const res = await fetch(API_URL);
+  const dataRaw = await res.json();
 
-        fitToVisible();
-        updateTooltips();
-        updateSizes();
-      } catch (err) {
-        console.error('Virhe asemien latauksessa:', err);
-      }
-    }
+  const data = dataRaw.filter(st => st.countryCode === "FI");
+  data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
 
-    $('#stationSelect').select2({
-      placeholder: "Valitse asema(t)...",
-      allowClear: true
+  data.forEach(st => {
+    if (!st.latitude || !st.longitude) return;
+
+    const marker = L.circleMarker([st.latitude, st.longitude], {
+      radius: 8,
+      color: markerColor,
+      fillColor: markerColor,
+      fillOpacity: 0.9,
+      weight: 1
     });
 
-    $('#stationSelect').on('change', function(){
-      const selected = $(this).val();
-      if (!selected || !selected.length) {
-        showOnly(()=>true);
-      } else {
-        showOnly(st => selected.includes(st.stationShortCode));
-      }
-      fitToVisible();
-      updateTooltips();
-    });
+    marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
 
-    document.getElementById('clear').addEventListener('click', ()=>{
-      $('#stationSelect').val(null).trigger('change');
-      showOnly(()=>true);
-      fitToVisible();
-      updateTooltips();
-    });
+    marker.bindTooltip(
+      `${st.stationName} (${st.stationShortCode})`,
+      { permanent:true, direction:'top', offset:[0,-6], className:'station-label' }
+    );
 
-    document.getElementById('toggleLabels').addEventListener('change', e=>{
-      labelsVisible = e.target.checked;
-      updateTooltips();
-    });
+    marker.addTo(map);
+    markers.push({ data:st, marker });
 
-    document.getElementById('textPlus').onclick = ()=>{ textScale += 0.2; updateSizes(); };
-    document.getElementById('textMinus').onclick = ()=>{ textScale = Math.max(0.4, textScale - 0.2); updateSizes(); };
-    document.getElementById('markerPlus').onclick = ()=>{ markerScale += 0.2; updateSizes(); };
-    document.getElementById('markerMinus').onclick = ()=>{ markerScale = Math.max(0.4, markerScale - 0.2); updateSizes(); };
+    const option = new Option(
+      `${st.stationName} (${st.stationShortCode})`,
+      st.stationShortCode,
+      false,false
+    );
+    $('#stationSelect').append(option);
+  });
 
-    document.getElementById('colorPicker').addEventListener('input', e=>{
-      markerColor = e.target.value;
-      updateSizes();
-    });
+  fitToVisible();
+  updateTooltips();
+  updateSizes();
+}
 
-    map.on('zoomend', updateSizes);
+$('#stationSelect').select2({
+  placeholder:"Valitse asema(t)...",
+  allowClear:true
+});
 
-    loadStations();
-  </script>
+$('#stationSelect').on('change', function(){
+  const selected = $(this).val();
+  if (!selected || !selected.length) {
+    showOnly(()=>true);
+  } else {
+    showOnly(st=>selected.includes(st.stationShortCode));
+  }
+  fitToVisible();
+  updateTooltips();
+});
+
+document.getElementById('clear').addEventListener('click', ()=>{
+  $('#stationSelect').val(null).trigger('change');
+  showOnly(()=>true);
+  fitToVisible();
+  updateTooltips();
+});
+
+document.getElementById('toggleLabels').addEventListener('change', e=>{
+  labelsVisible = e.target.checked;
+  updateTooltips();
+});
+
+/* 🔘 Tekstin koko */
+document.getElementById('textPlus').onclick = ()=>{ textScale += 0.2; updateSizes(); };
+document.getElementById('textMinus').onclick = ()=>{ textScale = Math.max(0.4, textScale - 0.2); updateSizes(); };
+
+/* 🔵 Pallon koko */
+document.getElementById('markerPlus').onclick = ()=>{ markerScale += 0.2; updateSizes(); };
+document.getElementById('markerMinus').onclick = ()=>{ markerScale = Math.max(0.4, markerScale - 0.2); updateSizes(); };
+
+/* 🎨 Väri */
+document.getElementById('colorPicker').addEventListener('input', e=>{
+  markerColor = e.target.value;
+  updateSizes();
+});
+
+map.on('zoomend', updateSizes);
+
+loadStations();
+</script>
+
 </body>
 </html>
