@@ -150,10 +150,24 @@ function updateSizes() {
   });
 }
 
-  const dataRaw = await res.json();
-
-  const data = dataRaw.filter(st => st.countryCode === "FI");
-  data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
+async function loadStations() {  // ← async puuttui!
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) {
+      throw new Error(`Digitraffic-virhe: ${res.status}`);
+    }
+    const dataRaw = await res.json();
+    const data = dataRaw.filter(st => st.countryCode === "FI");
+    data.sort((a,b) => a.stationName.localeCompare(b.stationName));
+    // ... loput forEach-looppi, markerit, select-optiot jne. sama kuin ennen
+    fitToVisible();
+    updateTooltips();
+    updateSizes();
+  } catch (error) {
+    console.error('Asemien lataus epäonnistui:', error);
+    // Voit lisätä alert("Asemat eivät latautuneet – tarkista yhteys") jos haluat
+  }
+}
 
   data.forEach(st => {
     if (!st.latitude || !st.longitude) return;
@@ -238,6 +252,7 @@ loadStations();
 
 </body>
 </html>
+
 
 
 
