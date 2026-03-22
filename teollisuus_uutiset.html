@@ -493,7 +493,8 @@ async function fetchIndustry(industry) {
   showSkeleton(industry);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    // Step 1: Ask Claude to search the web (may use tool_use)
+    const res1 = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
@@ -501,33 +502,73 @@ async function fetchIndustry(industry) {
         max_tokens:4000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         system: cfg.system,
-        messages:[{role:'user', content:`Hae 10-14 tuoreinta uutista. Hakusanat: ${cfg.query}. Palauta VAIN JSON-taulukko.`}]
+        messages:[{role:'user', content:'Hae 10-14 tuoreinta uutista. Hakusanat: '+cfg.query+'. Palauta VAIN JSON-taulukko.'}]
       })
     });
+    const d1 = await res1.json();
+    if(d1.error) throw new Error(d1.error.message||'API virhe');
 
-    const data = await res.json();
+    // Step 2: If Claude used web_search tool, send tool results back
+    let finalContent = d1.content || [];
+    if(d1.stop_reason === 'tool_use') {
+      const toolUseBlocks = d1.content.filter(b => b.type === 'tool_use');
+      const toolResults = toolUseBlocks.map(b => ({
+        type:'tool_result', tool_use_id: b.id,
+        content: '(web search results provided)'
+      }));
+      const res2 = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:4000,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          system: cfg.system,
+          messages:[
+            {role:'user', content:'Hae 10-14 tuoreinta uutista. Hakusanat: '+cfg.query+'. Palauta VAIN JSON-taulukko.'},
+            {role:'assistant', content: d1.content},
+            {role:'user', content: toolResults}
+          ]
+        })
+      });
+      const d2 = await res2.json();
+      finalContent = d2.content || [];
+    }
+
+    // Extract all text from response
     let raw = '';
-    if (data.content) data.content.forEach(b => {
-      if(b.type==='text') raw += b.text;
-      // Also handle tool_result blocks
-      if(b.type==='tool_result' && Array.isArray(b.content))
-        b.content.forEach(c => { if(c.type==='text') raw += c.text; });
-    });
+    function extractText(blocks) {
+      (blocks||[]).forEach(b => {
+        if(b.type==='text') raw += b.text + '\n';
+        if(b.type==='tool_result') {
+          if(typeof b.content==='string') raw += b.content;
+          if(Array.isArray(b.content)) b.content.forEach(c=>{ if(c.type==='text') raw+=c.text; });
+        }
+      });
+    }
+    extractText(finalContent);
 
-    // Try to extract JSON array - handle markdown code blocks too
-    raw = raw.replace(/```json|```/g,'');
-    const match = raw.match(/\[\s*\{[\s\S]*?\}\s*\]/);
-    if (!match) throw new Error('Ei JSON-vastausta');
+    // Parse JSON – try multiple patterns
+    raw = raw.replace(/```json/gi,'').replace(/```/g,'');
+    let articles = null;
+    // Try full array match
+    const m1 = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if(m1) { try { articles = JSON.parse(m1[0]); } catch(e){} }
+    // Try greedy from first [ to last ]
+    if(!articles) {
+      const start = raw.indexOf('['), end = raw.lastIndexOf(']');
+      if(start!==-1 && end>start) { try { articles = JSON.parse(raw.slice(start,end+1)); } catch(e){} }
+    }
+    if(!articles2 || !articles2.length) throw new Error('Ei JSON-vastausta');
 
-    let articles = JSON.parse(match[0]);
     // Inject industry field
-    articles = articles.map(a => ({...a, industry}));
+    articles2 = articles2.map(a => ({...a, industry}));
 
-    state.articles[industry] = articles;
+    state.articles[industry] = articles2;
     state.lastFetch[industry] = Date.now();
-    document.getElementById(`badge-${industry}`).textContent = articles.length;
+    document.getElementById(`badge-${industry}`).textContent = articles2.length;
 
-    setStatus(industry, 'ok', `${articles.length} uutista · ${new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`);
+    setStatus(industry, 'ok', `${articles2.length} uutista · ${new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`);
     renderArticles(industry);
     updateTicker();
 
@@ -630,32 +671,56 @@ async function fetchStocks() {
   // Use Claude to get stock prices via web search
   try {
     const symbols = STOCKS.map(s => s.sym).join(', ');
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const stockNames = STOCKS.map(s=>s.name+' ('+s.sym+')').join(', ');
+    const sres = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1500,
         tools:[{type:'web_search_20250305',name:'web_search'}],
-        system:`Hae osakekurssit. Palauta VAIN JSON-taulukko, ei muuta tekstiä.
-Jokainen objekti: { sym, name, price, change, changePct, currency }
-price = viimeisin kurssi numeroina, change = muutos numeroina (+ tai -), changePct = muutosprosentti numeroina.`,
-        messages:[{role:'user', content:`Hae nykyiset osakekurssit näille: ${STOCKS.map(s=>s.name+' ('+s.sym+')').join(', ')}. VAIN JSON.`}]
+        system:'Hae osakekurssit. Palauta VAIN JSON-taulukko. Kentät: { sym, name, price, change, changePct, currency }',
+        messages:[{role:'user', content:'Hae nykyiset osakekurssit: '+stockNames+'. Palauta VAIN JSON-taulukko.'}]
       })
     });
+    const sd = await sres.json();
+    if(sd.error) throw new Error(sd.error.message);
 
-    const data = await res.json();
-    let raw = '';
-    if (data.content) data.content.forEach(b => {
-      if(b.type==='text') raw += b.text;
-      if(b.type==='tool_result' && Array.isArray(b.content))
-        b.content.forEach(c => { if(c.type==='text') raw += c.text; });
+    let sraw = '';
+    (sd.content||[]).forEach(b=>{
+      if(b.type==='text') sraw+=b.text;
     });
-    raw = raw.replace(/```json|```/g,'');
-    const match = raw.match(/\[\s*\{[\s\S]*?\}\s*\]/);
-    if (!match) throw new Error('no json');
+    // If tool_use, do second call
+    if(sd.stop_reason==='tool_use') {
+      const toolUses = (sd.content||[]).filter(b=>b.type==='tool_use');
+      const sres2 = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1500,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          system:'Hae osakekurssit. Palauta VAIN JSON-taulukko. Kentät: { sym, name, price, change, changePct, currency }',
+          messages:[
+            {role:'user', content:'Hae nykyiset osakekurssit: '+stockNames+'. Palauta VAIN JSON-taulukko.'},
+            {role:'assistant', content:sd.content},
+            {role:'user', content:toolUses.map(b=>({type:'tool_result',tool_use_id:b.id,content:'search done'}))}
+          ]
+        })
+      });
+      const sd2 = await sres2.json();
+      (sd2.content||[]).forEach(b=>{ if(b.type==='text') sraw+=b.text; });
+    }
 
-    const prices = JSON.parse(match[0]);
+    sraw = sraw.replace(/```json|```/gi,'');
+    let prices = null;
+    const sm = sraw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if(sm) { try{ prices=JSON.parse(sm[0]); }catch(e){} }
+    if(!prices) {
+      const si=sraw.indexOf('['), se=sraw.lastIndexOf(']');
+      if(si!==-1&&se>si){ try{ prices=JSON.parse(sraw.slice(si,se+1)); }catch(e){} }
+    }
+    if(!prices) throw new Error('no json');
     strip.innerHTML = '';
 
     prices.forEach(p => {
