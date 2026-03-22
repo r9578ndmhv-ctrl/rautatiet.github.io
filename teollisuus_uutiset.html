@@ -7,25 +7,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #080b0f;
-  --s1: #0f1318;
-  --s2: #161b23;
-  --s3: #1e242f;
-  --border: #252c38;
-  --text: #cdd5e0;
-  --muted: #5a6478;
-  --dim: #3a4256;
+  --bg: #f4f6f8;
+  --s1: #ffffff;
+  --s2: #eef1f5;
+  --s3: #e4e8ee;
+  --border: #d0d7e2;
+  --text: #1a2233;
+  --muted: #6b7a94;
+  --dim: #a0aab8;
 
   /* Industry accent colors */
-  --forest: #4caf72;
-  --forest2: #2d7a4a;
-  --metal: #64a8d4;
-  --metal2: #3a6e9a;
-  --yara: #e8c84b;
-  --yara2: #a88c2a;
+  --forest: #1e8a4a;
+  --forest2: #145e32;
+  --metal: #1a6fa8;
+  --metal2: #0f4a72;
+  --yara: #b8860b;
+  --yara2: #8a6508;
 
-  --up: #4be87a;
-  --down: #e84b4b;
+  --up: #16a34a;
+  --down: #dc2626;
   --flat: #6b7280;
 }
 
@@ -36,14 +36,14 @@ body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans
 body::before {
   content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
-    repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 61px),
-    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 61px);
+    repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(0,0,0,.025) 60px,rgba(0,0,0,.025) 61px),
+    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(0,0,0,.025) 60px,rgba(0,0,0,.025) 61px);
 }
 
 /* ─── HEADER ─────────────────────────────────────────── */
 #header {
   position:sticky; top:0; z-index:200;
-  background:rgba(8,11,15,.96); backdrop-filter:blur(16px);
+  background:rgba(244,246,248,.97); backdrop-filter:blur(16px); box-shadow:0 1px 0 var(--border);
   border-bottom:1px solid var(--border);
 }
 
@@ -56,7 +56,7 @@ body::before {
 .brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .brand-name {
   font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:4px;
-  background:linear-gradient(135deg,#e8c84b,#64a8d4,#4caf72);
+  background:linear-gradient(135deg,#b8860b,#1a6fa8,#1e8a4a);
   -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
 }
 .brand-sub { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:2px; }
@@ -71,11 +71,11 @@ body::before {
 
 /* ─── TICKER BAR ─────────────────────────────────────── */
 #ticker-bar {
-  background:var(--s1); border-bottom:1px solid var(--border);
+  background:var(--s2); border-bottom:1px solid var(--border);
   height:34px; display:flex; align-items:center; overflow:hidden;
 }
 .ticker-tag {
-  flex-shrink:0; background:var(--yara); color:#080b0f;
+  flex-shrink:0; background:var(--text); color:#ffffff;
   font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:2px;
   padding:0 12px; height:100%; display:flex; align-items:center;
 }
@@ -113,7 +113,7 @@ body::before {
 
 /* ─── TABS ───────────────────────────────────────────── */
 #tabs {
-  background:var(--s1); border-bottom:1px solid var(--border);
+  background:var(--s2); border-bottom:1px solid var(--border);
   display:flex; max-width:100%; overflow-x:auto; scrollbar-width:none;
   position:sticky; top:56px; z-index:100;
 }
@@ -203,7 +203,7 @@ main { max-width:1400px; margin:0 auto; padding:20px; position:relative; z-index
 .news-card[data-industry="yara"]::before   { background:var(--yara); }
 .news-card[data-industry="rail"]::before   { background:#c084fc; }
 
-.news-card:hover { border-color:var(--dim); transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.5); }
+.news-card:hover { border-color:var(--dim); transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
 .news-card.featured { border-left:2px solid; grid-column:span 2; }
 .news-card.featured[data-industry="forest"] { border-left-color:var(--forest); }
 .news-card.featured[data-industry="metal"]  { border-left-color:var(--metal); }
@@ -254,7 +254,7 @@ main { max-width:1400px; margin:0 auto; padding:20px; position:relative; z-index
   background:var(--s3); border-radius:3px; margin-bottom:8px;
 }
 @keyframes shimmer {
-  0%,100%{opacity:.5} 50%{opacity:1}
+  0%,100%{opacity:.6} 50%{opacity:1}
 }
 
 /* ─── EMPTY / ERROR ──────────────────────────────────── */
@@ -507,9 +507,16 @@ async function fetchIndustry(industry) {
 
     const data = await res.json();
     let raw = '';
-    if (data.content) data.content.forEach(b => { if(b.type==='text') raw += b.text; });
+    if (data.content) data.content.forEach(b => {
+      if(b.type==='text') raw += b.text;
+      // Also handle tool_result blocks
+      if(b.type==='tool_result' && Array.isArray(b.content))
+        b.content.forEach(c => { if(c.type==='text') raw += c.text; });
+    });
 
-    const match = raw.match(/\[[\s\S]*\]/);
+    // Try to extract JSON array - handle markdown code blocks too
+    raw = raw.replace(/```json|```/g,'');
+    const match = raw.match(/\[\s*\{[\s\S]*?\}\s*\]/);
     if (!match) throw new Error('Ei JSON-vastausta');
 
     let articles = JSON.parse(match[0]);
@@ -639,8 +646,13 @@ price = viimeisin kurssi numeroina, change = muutos numeroina (+ tai -), changeP
 
     const data = await res.json();
     let raw = '';
-    if (data.content) data.content.forEach(b => { if(b.type==='text') raw += b.text; });
-    const match = raw.match(/\[[\s\S]*?\]/);
+    if (data.content) data.content.forEach(b => {
+      if(b.type==='text') raw += b.text;
+      if(b.type==='tool_result' && Array.isArray(b.content))
+        b.content.forEach(c => { if(c.type==='text') raw += c.text; });
+    });
+    raw = raw.replace(/```json|```/g,'');
+    const match = raw.match(/\[\s*\{[\s\S]*?\}\s*\]/);
     if (!match) throw new Error('no json');
 
     const prices = JSON.parse(match[0]);
