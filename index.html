@@ -286,6 +286,42 @@
       </button>
     </div>
 
+    <!-- KUNNAT -->
+    <div class="sidebar-section">
+      <h3>Kunnat</h3>
+      <div class="toggle-row" style="margin-bottom:8px">
+        <label class="toggle"><input type="checkbox" id="kunnat-toggle" onchange="toggleKunnat()"><span class="toggle-slider"></span></label>
+        <span>Näytä kuntarajat</span>
+      </div>
+      <div class="dim" id="kunnat-status" style="margin-bottom:6px">Lähde: MML INSPIRE WFS (API-avain: MML)</div>
+
+      <!-- Näytettävät kunnat -->
+      <div id="kunnat-selector" style="display:none">
+        <div class="ctrl-row" style="margin-bottom:6px">
+          <label>Täyttöväri</label>
+          <div class="color-pick-row" id="kunta-fill-colors"></div>
+        </div>
+        <div class="ctrl-row" style="margin-bottom:6px">
+          <label>Reunaväri</label>
+          <div class="color-pick-row" id="kunta-border-colors"></div>
+        </div>
+        <div class="ctrl-row" style="margin-bottom:6px">
+          <label>Läpinäkyvyys</label>
+          <input type="range" id="kunta-opacity" min="0" max="100" value="20" oninput="updateKuntaStyle()">
+          <span class="val" id="kunta-opacity-val">20%</span>
+        </div>
+        <div style="display:flex;gap:5px;margin-bottom:6px">
+          <button class="tool-btn" style="flex:1;padding:5px;font-size:0.75rem;margin:0" onclick="selectAllKunnat()">Kaikki</button>
+          <button class="tool-btn" style="flex:1;padding:5px;font-size:0.75rem;margin:0" onclick="clearAllKunnat()">Ei mitään</button>
+        </div>
+        <div class="search-wrap" style="margin-bottom:5px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="kunta-search" placeholder="Hae kuntaa..." oninput="filterKunnat()">
+        </div>
+        <div id="kunta-list" style="max-height:200px;overflow-y:auto;background:var(--panel2);border:1px solid var(--border);border-radius:6px"></div>
+      </div>
+    </div>
+
     <!-- PIIRTOTYÖKALUT -->
     <div class="sidebar-section">
       <h3>Piirtotyökalut</h3>
@@ -583,6 +619,158 @@ let fiGeoJSON = null;
 let fiFillColor = '#d0e8f0';
 let fiBorderColor = '#2a6496';
 let basemapHidden = false;
+
+// ---- KUNNAT (Tilastokeskus OGC API) ----
+let kuntaGeoJSON = null;
+let kuntaLoaded = false;
+let kuntaLayerGroup = null;       // L.layerGroup for all visible municipalities
+let kuntaLayers = {};             // name -> L.geoJSON layer
+let selectedKunnat = new Set();   // selected municipality names
+let kuntaFillColor = '#00b4d8';
+let kuntaBorderColor = '#2a6496';
+
+async function toggleKunnat() {
+  const on = document.getElementById('kunnat-toggle').checked;
+  const status = document.getElementById('kunnat-status');
+  if (!on) {
+    if (kuntaLayerGroup) map.removeLayer(kuntaLayerGroup);
+    status.textContent = 'Lähde: MML INSPIRE WFS';
+    status.className = 'dim';
+    return;
+  }
+  if (kuntaLoaded && kuntaGeoJSON) {
+    rebuildKuntaLayer();
+    return;
+  }
+
+  status.textContent = 'Ladataan kuntarajoja…';
+  status.className = 'dim';
+  document.getElementById('loading-bar').classList.add('active');
+
+  // MML OGC API Features – HallinnollinenAlue = kuntarajat, 1:100 000 tarkkuus
+  // Käyttää samaa MML API-avainta kuin taustakartta
+  const wfsUrl = `https://avoin-paikkatieto.maanmittauslaitos.fi/administrative-units/features/v1/collections/HallinnollinenAlue/items?api-key=${MML_KEY}&limit=400&f=json`;
+  try {
+    const res = await fetch(wfsUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    kuntaGeoJSON = await res.json();
+    kuntaLoaded = true;
+    // Auto-detect property name from first feature
+    if (kuntaGeoJSON.features && kuntaGeoJSON.features.length > 0) {
+      const sampleProps = kuntaGeoJSON.features[0].properties || {};
+      console.log('Kunta properties:', Object.keys(sampleProps));
+      // Try to find a name field that contains Finnish municipality names
+      const candidates = Object.entries(sampleProps).filter(([k,v]) =>
+        typeof v === 'string' && v.length > 1 && v.length < 50 &&
+        /^[A-ZÄÖÅ]/.test(v)
+      );
+      if (candidates.length > 0) {
+        console.log('Name field candidates:', candidates);
+      }
+    }
+    // Build name list and select all by default
+    selectedKunnat = new Set([...(kuntaGeoJSON.features||[])].map(getKuntaName).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fi')));
+    document.getElementById('kunnat-selector').style.display = 'block';
+    renderKuntaList('');
+    rebuildKuntaLayer();
+    const loadedNames = [...selectedKunnat].slice(0,3).join(', ');
+    status.textContent = `✓ Ladattu – ${kuntaGeoJSON.features.length} aluetta${loadedNames ? ' (esim. '+loadedNames+')' : ''}`;
+    status.className = 'status-ok';
+    if (selectedKunnat.size === 0) {
+      status.textContent = '⚠ Data ladattu mutta kuntien nimiä ei tunnistettu – tarkista konsoli';
+      status.className = 'status-err';
+    }
+  } catch(e) {
+    status.textContent = '✗ Lataus epäonnistui: ' + e.message;
+    status.className = 'status-err';
+    document.getElementById('kunnat-toggle').checked = false;
+  }
+  document.getElementById('loading-bar').classList.remove('active');
+}
+
+function getKuntaName(f) {
+  const p = f.properties || {};
+  // MML INSPIRE WFS fields: name (object with fin/swe), or nationalCode
+  if (p.name) {
+    if (typeof p.name === 'string') return p.name;
+    if (p.name.fin) return p.name.fin;
+    if (p.name.swe) return p.name.swe;
+    if (Array.isArray(p.name)) {
+      const fin = p.name.find(n => n.language === 'fin' || n.lang === 'fin');
+      if (fin) return fin.spelling || fin.value || fin.text;
+      return p.name[0]?.spelling || p.name[0]?.value || null;
+    }
+  }
+  // Fallback field names from other possible sources
+  return p.nimi_fi || p.Nimi || p.nimi || p.NAMEFIN || p.name_fi ||
+         p.kohdenimi || p.kuntanimi || p.label || p.nationalCode || null;
+}
+
+function rebuildKuntaLayer() {
+  if (kuntaLayerGroup) map.removeLayer(kuntaLayerGroup);
+  const o = +document.getElementById('kunta-opacity').value / 100;
+  const features = (kuntaGeoJSON.features || []).filter(f => selectedKunnat.has(getKuntaName(f)));
+  if (!features.length) return;
+  kuntaLayerGroup = L.layerGroup(
+    features.map(f => L.geoJSON(f, {
+      style: { fillColor: kuntaFillColor, fillOpacity: o, color: kuntaBorderColor, weight: 1 },
+      onEachFeature: (feat, layer) => {
+        const name = getKuntaName(feat);
+        if (name) layer.bindTooltip(name, { sticky: true });
+      }
+    }))
+  ).addTo(map);
+  if (finlandLayer) finlandLayer.bringToBack();
+}
+
+function updateKuntaStyle() {
+  const o = +document.getElementById('kunta-opacity').value / 100;
+  document.getElementById('kunta-opacity-val').textContent = Math.round(o*100) + '%';
+  if (kuntaLayerGroup && document.getElementById('kunnat-toggle').checked) {
+    rebuildKuntaLayer();
+  }
+}
+
+function renderKuntaList(q) {
+  const list = document.getElementById('kunta-list');
+  const names = [...new Set((kuntaGeoJSON.features||[]).map(getKuntaName).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b,'fi'))
+    .filter(n => !q || n.toLowerCase().includes(q.toLowerCase()));
+  if (!names.length) { list.innerHTML = '<div class="dim" style="padding:8px">Ei tuloksia</div>'; return; }
+  list.innerHTML = names.map(n => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid rgba(42,63,85,0.4);font-size:0.8rem;cursor:pointer" onclick="toggleKunta('${n.replace(/'/g,"\'").replace(/"/g,'&quot;')}')">
+      <div style="width:13px;height:13px;border-radius:3px;border:2px solid ${kuntaBorderColor};background:${selectedKunnat.has(n) ? kuntaFillColor : 'transparent'};flex-shrink:0"></div>
+      <span>${n}</span>
+    </div>`).join('');
+}
+
+function filterKunnat() {
+  renderKuntaList(document.getElementById('kunta-search').value);
+}
+
+function toggleKunta(name) {
+  if (selectedKunnat.has(name)) selectedKunnat.delete(name);
+  else selectedKunnat.add(name);
+  renderKuntaList(document.getElementById('kunta-search').value);
+  if (document.getElementById('kunnat-toggle').checked) rebuildKuntaLayer();
+}
+
+function selectAllKunnat() {
+  (kuntaGeoJSON.features||[]).forEach(f => { const n = getKuntaName(f); if(n) selectedKunnat.add(n); });
+  renderKuntaList(document.getElementById('kunta-search').value);
+  if (document.getElementById('kunnat-toggle').checked) rebuildKuntaLayer();
+}
+
+function clearAllKunnat() {
+  selectedKunnat.clear();
+  renderKuntaList(document.getElementById('kunta-search').value);
+  if (kuntaLayerGroup) { map.removeLayer(kuntaLayerGroup); kuntaLayerGroup = null; }
+}
+
+function initKunnat() {
+  makeSwatches('kunta-fill-colors', kuntaFillColor, c => { kuntaFillColor = c; renderKuntaList(document.getElementById('kunta-search')?.value||''); if(document.getElementById('kunnat-toggle')?.checked) rebuildKuntaLayer(); });
+  makeSwatches('kunta-border-colors', kuntaBorderColor, c => { kuntaBorderColor = c; if(document.getElementById('kunnat-toggle')?.checked) rebuildKuntaLayer(); });
+}
 
 // Accurate Finland boundary provided by user
 const FINLAND_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[22.9403565,59.8256549],[23.2312685,59.8455882],[23.9254903,59.9682474],[24.3288001,60.0640692],[24.3552466,59.9914022],[24.5139259,59.9947087],[24.7387215,60.1299915],[25.3073222,60.212209],[25.5188945,60.2286279],[26.1139417,60.3007731],[26.1734465,60.3792957],[26.5172515,60.3890978],[26.8279984,60.4478481],[27.0395708,60.4706669],[27.0395708,60.5064925],[27.1651918,60.5227637],[27.3172595,60.5097474],[27.4098224,60.4543694],[27.7536274,60.4804414],[27.8461903,60.5487808],[27.8726369,60.6072427],[28.5205772,60.9590089],[28.6395806,60.9558009],[28.8709879,61.1254684],[29.2941326,61.2815245],[29.5321515,61.487347],[30.3255478,61.9540636],[31.2511767,62.4993603],[31.5949818,62.9207161],[31.2842349,63.1156988],[31.2445651,63.226108],[30.7751389,63.4101768],[30.484227,63.4574876],[30.3718291,63.5577641],[30.2792662,63.5724809],[29.9685194,63.7543392],[30.266045,63.824425],[30.4445592,63.9756776],[30.5767919,64.1059127],[30.4511709,64.2786156],[30.0610843,64.3960114],[30.0015796,64.5754264],[30.1536472,64.6519588],[30.067696,64.7310985],[30.1073658,64.7790349],[30.0544727,64.7903017],[29.7503375,64.7987487],[29.6379396,64.9195321],[29.631328,65.0453533],[29.9090167,65.1038676],[29.849512,65.1511421],[29.9090167,65.2121961],[29.6445513,65.2454391],[29.7468981,65.34281],[29.7601213,65.4831074],[29.8923541,65.5543431],[29.7601213,65.6281129],[30.0047519,65.6826224],[30.1568195,65.6662816],[30.0245868,65.9830739],[29.9055773,66.1547167],[29.7204515,66.2826901],[29.4228291,66.5817982],[29.0327426,66.9314248],[29.6013433,67.3245899],[29.9385367,67.5225767],[30.0321031,67.6734547],[29.6618515,67.8036991],[29.3378814,68.0817789],[28.6701061,68.197484],[28.4519222,68.5362839],[28.6833283,68.7146019],[28.7825028,68.8724485],[28.4453094,68.8938863],[28.4386977,68.9081667],[28.9411821,69.0551912],[28.8486191,69.0929738],[28.8486191,69.2223556],[29.3180453,69.4788267],[29.1130846,69.7024719],[28.3267396,69.8451692],[28.3531861,69.8861349],[28.1350022,69.9270208],[28.0226044,70.013074],[27.956488,70.0897689],[27.4738386,70.0514568],[27.176315,69.9497008],[27.0837521,69.9247515],[26.5349863,69.9655621],[26.0787834,69.7401154],[25.8605994,69.6552352],[25.959774,69.6069085],[25.8275412,69.5515435],[25.8010947,69.405525],[25.7349783,69.3379753],[25.6754772,69.1881522],[25.7349819,69.0088859],[25.5895259,68.8734695],[25.4374583,68.9020473],[25.1134881,68.7755497],[25.0936532,68.6290626],[24.8767458,68.5600169],[24.7841829,68.6444436],[24.1031844,68.7788673],[23.8916121,68.8457762],[23.7726026,68.8171256],[23.6800397,68.709356],[23.3692929,68.6901424],[23.1907787,68.6372194],[23.058546,68.6877395],[22.8139154,68.6853363],[22.5560616,68.7501303],[22.4106057,68.7165569],[22.3378777,68.8242917],[22.2056449,68.921997],[22.18581,68.9528867],[21.6304326,69.2781393],[21.2866276,69.3085303],[20.9824923,69.2195752],[20.9891039,69.1537955],[21.0882785,69.0996135],[21.0684436,69.0405674],[20.7048036,69.1090461],[20.5791825,69.0594795],[20.7841432,69.0334712],[20.8899294,68.9695018],[20.9031527,68.8958257],[21.0155505,68.8839194],[21.3064625,68.7645034],[21.3924137,68.7453372],[21.4386952,68.6853363],[21.6899373,68.6179437],[21.7362188,68.5793424],[21.8816748,68.5793424],[21.9676261,68.5285775],[22.040354,68.477698],[22.3180428,68.4704201],[22.4965569,68.4291345],[22.7147409,68.3902087],[22.9593714,68.319485],[23.0982158,68.2509911],[23.1444972,68.130631],[23.2899532,68.147864],[23.3891278,68.0467439],[23.6403699,67.9476616],[23.6007001,67.8904971],[23.5345837,67.8830304],[23.4684674,67.815723],[23.44639,67.7071009],[23.5236616,67.6526007],[23.5236616,67.5895587],[23.4684676,67.5390038],[23.4243125,67.4798863],[23.44639,67.4375692],[23.6009331,67.4460386],[23.7223598,67.4248594],[23.7333986,67.2888653],[23.5457391,67.2675463],[23.5347004,67.186361],[23.865864,66.9325068],[23.9762519,66.7980578],[23.8989804,66.767596],[23.8879416,66.5489111],[23.6119719,66.430015],[23.7002822,66.2439352],[23.7002822,66.1949718],[23.8879416,66.1637638],[24.0204071,65.9846921],[24.1087174,65.8134025],[24.5061138,65.731865],[24.6716956,65.6364116],[24.8814326,65.6318575],[25.0911696,65.5634487],[25.3119454,65.4673737],[25.2677902,65.1631122],[25.4002548,65.032966],[25.4664875,64.9583108],[25.2457117,65.00033],[25.2125954,64.9536379],[25.3781772,64.8974997],[25.334022,64.8365505],[25.0690911,64.9115452],[24.6496171,64.8600088],[24.5281904,64.7942739],[24.5061129,64.6812116],[24.3184534,64.5487069],[23.9100183,64.3104805],[23.6009322,64.0943013],[23.5898934,64.0653497],[23.4132727,64.0798293],[23.4132727,63.929844],[23.1152254,63.9249923],[23.0326717,63.8752946],[22.9935667,63.7871485],[22.8632165,63.7391272],[22.8501814,63.6910241],[22.6242411,63.7198958],[22.580791,63.6852462],[22.4895459,63.6158199],[22.4243708,63.5829762],[22.4591308,63.5597696],[22.4417508,63.4900361],[22.3765757,63.5559],[22.3548506,63.5810431],[22.2809855,63.5094236],[22.1940854,63.4686946],[22.3809207,63.3344617],[22.3591956,63.3071493],[22.2853305,63.3130041],[22.1289103,63.2426675],[21.8899349,63.2759034],[21.7030996,63.2465796],[21.6596495,63.2230991],[21.5553693,63.2856714],[21.5249543,63.1584293],[21.5553694,63.111306],[21.6726846,63.0542631],[21.5901295,63.0621377],[21.5249544,63.0896822],[21.4641243,63.0325969],[21.4728143,62.9892161],[21.3859142,62.8785009],[21.264254,62.9022608],[21.2208039,62.8130617],[21.1295587,62.8071055],[21.1425938,62.7474767],[21.1686638,62.7315554],[21.0730737,62.667784],[21.0861087,62.6158683],[21.1339028,62.633851],[21.1903879,62.6018771],[21.1599728,62.5618613],[21.1208677,62.4756447],[21.1816978,62.4696203],[21.1730078,62.425404],[21.2294929,62.4294263],[21.2381829,62.395219],[21.290323,62.4012584],[21.3120481,62.3488763],[21.3250831,62.3589569],[21.3337731,62.3347577],[21.294668,62.324669],[21.3381181,62.2923623],[21.3120481,62.249907],[21.3772232,62.2579983],[21.4076382,62.2013134],[21.3815682,62.1911799],[21.3511531,62.1445218],[21.3294281,62.1587297],[21.3163931,62.0754172],[21.285978,61.9979961],[21.3554967,61.9346951],[21.3989468,61.9346951],[21.4988819,61.8158995],[21.5162619,61.748103],[21.555367,61.7275291],[21.546677,61.6616002],[21.6770272,61.5603733],[21.546677,61.5934634],[21.4945369,61.5996638],[21.533642,61.5334616],[21.6031621,61.5106719],[21.4901919,61.5127444],[21.5814371,61.4422026],[21.4554319,61.4338931],[21.520607,61.388151],[21.5466777,61.340261],[21.4945376,61.2797697],[21.5640577,61.2296196],[21.4206725,61.2484353],[21.4815026,61.2191616],[21.4467425,61.1752],[21.4423975,61.1038939],[21.4467425,61.0912937],[21.3902575,61.0870926],[21.4163275,61.0429466],[21.2903223,61.0849918],[21.4250175,60.9460308],[21.4250175,60.9143639],[21.3685324,60.916476],[21.3685324,60.8890077],[21.3468074,60.8720923],[21.3859125,60.7788975],[21.4423975,60.7151998],[21.3468074,60.7066972],[21.3815674,60.6492459],[21.4163275,60.6279416],[21.4597776,60.5810226],[21.5684027,60.5297603],[21.5684027,60.4869797],[21.6683379,60.5212087],[21.6857179,60.5767538],[21.7813081,60.5959587],[21.8334482,60.6258104],[21.8247582,60.5852907],[21.7943431,60.4976802],[21.8421382,60.4912603],[21.8986233,60.4805577],[21.8725532,60.5361726],[21.9377283,60.5276226],[22.0202835,60.4569997],[22.1984288,60.4312804],[22.2809839,60.3883698],[22.320089,60.3561496],[22.3027089,60.3131399],[22.337469,60.276537],[22.324434,60.250675],[22.4156791,60.2420497],[22.4243691,60.1664822],[22.4287141,60.1556726],[22.350504,60.0690679],[22.3896091,59.9952746],[22.5851344,60.0213381],[22.6633445,60.0191669],[22.7198296,59.9974474],[22.8197648,59.971365],[22.9066649,59.8973534],[22.9403565,59.8256549]]]}}]};
@@ -980,6 +1168,7 @@ function exportMap() {
 
 buildAreaControls();
 loadStations();
+initKunnat();
 initFinlandMap();
 </script>
 </body>
