@@ -72,7 +72,7 @@ canvas{display:block;image-rendering:pixelated;}
 .char-card .cdesc{font-size:clamp(8px,1.2vw,11px);color:#999;font-family:'Rajdhani',sans-serif;text-align:center;line-height:1.5;}
 
 /* Speedometer */
-#speedo{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,28px);color:var(--neon);text-align:center;opacity:0.92;text-shadow:0 0 10px var(--neon);letter-spacing:1px;white-space:nowrap;pointer-events:none;}
+#speedo{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,28px);color:#00aa44;text-align:center;opacity:1;text-shadow:0 0 8px #007722,0 1px 3px rgba(0,0,0,0.9);letter-spacing:1px;white-space:nowrap;pointer-events:none;font-weight:700;}
 </style>
 </head>
 <body>
@@ -243,8 +243,35 @@ const PNAMES=['Yksikkö 1','Yksikkö 2','K-9','Yksikkö 4','SWAT','Moottoripyör
 
 // ─── AUDIO ────────────────────────────────────────────────────
 let AC=null;
-function gac(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
-function rac(){if(AC&&AC.state==='suspended')AC.resume();}
+let audioUnlocked=false;
+
+function gac(){
+  if(!AC){
+    AC=new(window.AudioContext||window.webkitAudioContext)();
+  }
+  return AC;
+}
+function rac(){
+  if(!AC) gac();
+  if(AC.state==='suspended'||AC.state==='interrupted') AC.resume();
+}
+
+// iOS unlock: play a silent buffer on first touch anywhere
+function unlockAudio(){
+  if(audioUnlocked) return;
+  try{
+    const ac=gac();
+    const buf=ac.createBuffer(1,1,22050);
+    const src=ac.createBufferSource();
+    src.buffer=buf;
+    src.connect(ac.destination);
+    src.start(0);
+    ac.resume().then(()=>{ audioUnlocked=true; });
+  }catch(e){}
+}
+document.addEventListener('touchstart', unlockAudio, {once:false, passive:true});
+document.addEventListener('touchend',   unlockAudio, {once:false, passive:true});
+document.addEventListener('click',      unlockAudio, {once:false, passive:true});
 
 function beep(f,d,type='square',vol=0.15,delay=0){
   try{
