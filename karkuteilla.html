@@ -202,28 +202,25 @@ canvas{display:block;image-rendering:pixelated;}
 // ─── MAZE ─────────────────────────────────────────────────────
 // 0=path 1=block 2=coin 3=power(tehobonsi) 4=reserved(police garage)
 const MRAW=[
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1],
-  [1,3,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,3,1],
-  [1,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,2,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-  [1,2,1,1,2,1,2,1,1,1,1,1,1,1,2,1,2,1,1,2,1],
-  [1,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1],
-  [1,1,1,1,2,1,1,1,0,0,1,0,0,1,1,1,2,1,1,1,1],
-  [1,1,1,1,2,1,0,0,0,0,0,0,0,0,0,1,2,1,1,1,1],
-  [1,1,1,1,2,1,0,1,1,4,4,4,1,1,0,1,2,1,1,1,1],
-  [0,0,0,0,2,0,0,1,4,4,4,4,4,1,0,0,2,0,0,0,0],
-  [1,1,1,1,2,1,0,1,1,1,1,1,1,1,0,1,2,1,1,1,1],
-  [1,1,1,1,2,1,0,0,0,0,0,0,0,0,0,1,2,1,1,1,1],
-  [1,1,1,1,2,1,0,1,1,1,1,1,1,1,0,1,2,1,1,1,1],
-  [1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1],
-  [1,2,1,1,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,2,1],
-  [1,3,2,1,2,2,2,2,2,2,0,2,2,2,2,2,2,1,2,3,1],
-  [1,1,2,1,2,1,2,1,1,1,1,1,1,1,2,1,2,1,2,1,1],
-  [1,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1],
-  [1,2,1,1,1,1,1,1,2,1,1,1,2,1,1,1,1,1,1,2,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,1],
+  [1,3,1,1,2,1,1,2,1,2,1,1,2,1,1,3,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,2,1,2,1,1,1,2,1,2,1,1,2,1],
+  [1,2,2,2,2,1,2,2,1,2,2,1,2,2,2,2,1],
+  [1,1,1,1,2,1,1,0,0,0,1,1,2,1,1,1,1],
+  [1,1,1,1,2,1,0,1,4,4,4,1,0,1,2,1,1],
+  [0,0,0,0,2,0,0,1,4,4,4,1,0,0,2,0,0],
+  [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1],
+  [1,1,1,1,2,1,0,0,0,0,0,0,0,1,2,1,1],
+  [1,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,1],
+  [1,2,1,1,2,1,1,2,0,2,1,1,2,1,1,2,1],
+  [1,3,2,1,2,2,2,2,2,2,2,2,2,1,2,3,1],
+  [1,1,2,1,2,1,2,1,1,1,2,1,2,1,2,1,1],
+  [1,2,2,2,2,1,2,2,1,2,2,1,2,2,2,2,1],
+  [1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
 const ROWS=MRAW.length, COLS=MRAW[0].length;
 
@@ -508,7 +505,7 @@ function passablePolice(r,c){if(r<0||r>=ROWS||c<0||c>=COLS)return false;return m
 // ─── JULIA CAR (grid-based, same system as police) ────────────
 function makeJulia(){
   return{
-    r:16, c:10,          // current grid cell
+    r:13, c:8,          // current grid cell
     tr:16, tc:10,        // target grid cell
     px:10*CS+CS/2, py:16*CS+CS/2,
     t:1,                 // interpolation 0→1 (start at 1 = arrived)
@@ -601,7 +598,7 @@ function moveJulia(dt){
   }
 }
 function makePolice(idx,cfg){
-  const homes=[{r:10,c:10},{r:10,c:9},{r:10,c:11},{r:9,c:10},{r:11,c:10},{r:9,c:9},{r:11,c:11}];
+  const homes=[{r:8,c:9},{r:8,c:8},{r:8,c:10},{r:7,c:9},{r:9,c:9},{r:7,c:8},{r:9,c:8}];
   const h=homes[idx%homes.length];
   return{
     idx,color:PCOLS[idx%PCOLS.length],name:PNAMES[idx%PNAMES.length],
@@ -753,8 +750,8 @@ function movePolice(p,dt){
     p.py=p.r*CS+CS/2+Math.sin(Date.now()/350+p.idx*1.1)*CS*0.16;
     p.px=p.c*CS+CS/2;
     if(p.garageMs<=0){
-      p.r=8;p.c=10;p.px=10*CS+CS/2;p.py=8*CS+CS/2;
-      p.tr=7;p.tc=10;p.t=0;p.dr=-1;p.dc=0;p.mode='active';
+      p.r=6;p.c=8;p.px=8*CS+CS/2;p.py=6*CS+CS/2;
+      p.tr=5;p.tc=8;p.t=0;p.dr=-1;p.dc=0;p.mode='active';
     }
     return;
   }
@@ -766,9 +763,9 @@ function movePolice(p,dt){
     p.px=p.c*CS+CS/2;p.py=p.r*CS+CS/2;
 
     // Eaten police return to garage
-    if(p.eaten&&p.r===8&&p.c===10){
+    if(p.eaten&&p.r===6&&p.c===8){
       p.eaten=false;p.scared=false;
-      p.r=10;p.c=10;p.px=10*CS+CS/2;p.py=10*CS+CS/2;
+      p.r=8;p.c=9;p.px=9*CS+CS/2;p.py=8*CS+CS/2;
       p.mode='garage';p.garageMs=700;p.dr=0;p.dc=0;return;
     }
 
@@ -792,7 +789,7 @@ function policeNextCell(p){
     });
     return valid.length?valid[Math.floor(Math.random()*valid.length)]:opp;
   }
-  if(p.eaten) return bfsDir(p.r,p.c,p.dr,p.dc,{r:8,c:10},true);
+  if(p.eaten) return bfsDir(p.r,p.c,p.dr,p.dc,{r:6,c:8},true);
 
   // Chase Julia with variation
   const jr=Math.round((julia.py-CS/2)/CS);
@@ -851,7 +848,7 @@ function doJuliaCaught(){
       julia=makeJulia();
       const cfg=LVLS[Math.min(level-1,LVLS.length-1)];
       police.forEach((p,i)=>{
-        const homes=[{r:10,c:10},{r:10,c:9},{r:10,c:11},{r:9,c:10},{r:11,c:10},{r:9,c:9},{r:11,c:11}];
+        const homes=[{r:8,c:9},{r:8,c:8},{r:8,c:10},{r:7,c:9},{r:9,c:9},{r:7,c:8},{r:9,c:8}];
         const h=homes[i%homes.length];
         p.r=h.r;p.c=h.c;p.tr=h.r;p.tc=h.c;
         p.px=h.c*CS+CS/2;p.py=h.r*CS+CS/2;
