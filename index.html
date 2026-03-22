@@ -1,235 +1,986 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fi">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Asemakartta</title>
-
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-      rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suomen Rataverkkokartta</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+  :root {
+    --bg: #0f1923; --panel: #162030; --panel2: #1c2a3a; --border: #2a3f55;
+    --accent: #00b4d8; --accent2: #f77f00; --text: #cdd9e5; --text2: #7a96b0; --danger: #e63946;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Source Sans 3', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-#topbar {
-  padding:10px;
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-  border-bottom:1px solid #ddd;
-}
+  header { display: flex; align-items: center; gap: 12px; padding: 9px 18px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 1000; }
+  header h1 { font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.04em; color: var(--accent); flex: 1; }
+  header h1 span { color: var(--text2); font-weight: 300; }
 
-#map { height:calc(100vh - 90px); }
+  .map-toggle { display: flex; gap: 4px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 3px; flex-wrap: wrap; }
+  .map-toggle button { padding: 4px 9px; border: none; border-radius: 4px; font-family: 'Source Sans 3', sans-serif; font-size: 0.72rem; cursor: pointer; background: transparent; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+  .map-toggle button.active { background: var(--accent); color: #0f1923; font-weight: 600; }
 
-.station-label {
-  font-weight:600;
-  background:white;
-  border:1px solid #ccc;
-  border-radius:4px;
-  padding:2px 6px;
-}
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 285px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+  .sidebar-section { padding: 13px 15px; border-bottom: 1px solid var(--border); }
+  .sidebar-section h3 { font-family: 'Raleway', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); margin-bottom: 9px; }
 
-.control-group {
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text2); margin-bottom: 6px; }
+  .toggle { position: relative; width: 32px; height: 17px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+  .toggle-slider:before { content: ''; position: absolute; width: 11px; height: 11px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(15px); }
 
-button {
-  cursor:pointer;
-}
+  .ctrl-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text2); margin-bottom: 5px; }
+  .ctrl-row label { min-width: 72px; }
+  .ctrl-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .ctrl-row .val { min-width: 26px; text-align: right; color: var(--text); font-size: 0.8rem; }
+
+  .color-pick-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .color-swatch { width: 19px; height: 19px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.1s; flex-shrink: 0; }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.selected { border-color: white; }
+  .free-color { width: 23px; height: 23px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; overflow: hidden; flex-shrink: 0; position: relative; }
+  .free-color input[type=color] { position: absolute; width: 200%; height: 200%; top: -50%; left: -50%; border: none; cursor: pointer; padding: 0; opacity: 0; }
+  .free-color-preview { width: 100%; height: 100%; border-radius: 50%; }
+
+  .search-wrap { position: relative; margin-bottom: 7px; }
+  .search-wrap input { width: 100%; padding: 8px 10px 8px 30px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 0.875rem; outline: none; transition: border-color 0.15s; }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+
+  .station-dropdown { max-height: 155px; overflow-y: auto; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; display: none; }
+  .station-dropdown.open { display: block; }
+  .station-option { padding: 6px 10px; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(42,63,85,0.4); transition: background 0.1s; }
+  .station-option:last-child { border-bottom: none; }
+  .station-option:hover { background: var(--border); }
+  .station-option.selected { background: rgba(0,180,216,0.15); color: var(--accent); }
+  .station-option .code { font-size: 0.7rem; color: var(--text2); background: var(--bg); padding: 1px 4px; border-radius: 3px; font-family: monospace; flex-shrink: 0; }
+
+  .selected-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+  .station-tag { display: flex; align-items: center; gap: 4px; padding: 2px 7px; background: rgba(0,180,216,0.12); border: 1px solid var(--accent); border-radius: 10px; font-size: 0.7rem; color: var(--accent); }
+  .station-tag button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.78rem; padding: 0; opacity: 0.7; }
+  .station-tag button:hover { opacity: 1; }
+
+  .appear-block { margin-top: 9px; display: flex; flex-direction: column; gap: 7px; }
+  .appear-label { font-size: 0.68rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .btn-row { display: flex; gap: 5px; margin-top: 5px; }
+  .add-btn { flex: 1; padding: 8px; background: var(--accent); border: none; border-radius: 6px; color: #0f1923; font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: opacity 0.15s; }
+  .add-btn:hover { opacity: 0.85; }
+  .add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .add-all-btn { padding: 8px 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-family: 'Raleway', sans-serif; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .add-all-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .area-color-editor { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 7px; }
+  .area-color-title { font-size: 0.75rem; color: var(--text2); margin-bottom: 7px; }
+
+  .tool-btn { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 11px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 0.85rem; cursor: pointer; margin-bottom: 5px; transition: all 0.15s; text-align: left; }
+  .tool-btn:hover { background: var(--border); border-color: var(--accent); }
+  .tool-btn.active { background: rgba(0,180,216,0.15); border-color: var(--accent); color: var(--accent); }
+  .tool-btn:last-child { margin-bottom: 0; }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; color: var(--text2); }
+  .slider-row label { min-width: 78px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-row span { min-width: 26px; text-align: right; }
+
+  .label-row { display: flex; gap: 5px; margin-bottom: 5px; }
+  .label-row input { flex: 1; padding: 7px 9px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 0.85rem; outline: none; }
+  .label-row input:focus { border-color: var(--accent); }
+  .label-row button { padding: 7px 11px; background: var(--accent); border: none; border-radius: 6px; color: #0f1923; font-weight: 700; cursor: pointer; }
+
+  .layers-list { display: flex; flex-direction: column; gap: 4px; }
+  .layer-item { display: flex; align-items: center; gap: 7px; padding: 6px 9px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: border-color 0.1s; }
+  .layer-item:hover { border-color: var(--accent); }
+  .layer-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); position: relative; overflow: hidden; }
+  .layer-dot input[type=color] { position: absolute; width: 200%; height: 200%; top: -50%; left: -50%; opacity: 0; cursor: pointer; }
+  .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .del-btn { background: none; border: none; color: var(--text2); cursor: pointer; padding: 2px 3px; font-size: 0.82rem; line-height: 1; transition: color 0.1s; flex-shrink: 0; }
+  .del-btn:hover { color: var(--danger); }
+
+  .export-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; background: var(--accent2); border: none; border-radius: 6px; color: white; font-family: 'Raleway', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; justify-content: center; }
+  .export-btn:hover { opacity: 0.85; }
+
+  #map { flex: 1; background: #f5f3ee; }
+
+  .statusbar { background: var(--panel); border-top: 1px solid var(--border); padding: 4px 15px; font-size: 0.73rem; color: var(--text2); display: flex; gap: 18px; flex-shrink: 0; }
+  #status-mode { color: var(--accent); font-weight: 600; }
+
+  .loading-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent)); background-size: 200% 100%; animation: shimmer 1.2s infinite; z-index: 2000; display: none; }
+  .loading-bar.active { display: block; }
+  @keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
+
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; background: rgba(0,180,216,0.2); color: var(--accent); margin-left: 4px; }
+  .info-text { font-size: 0.76rem; color: var(--text2); line-height: 1.5; }
+  .dim { font-size: 0.74rem; color: var(--text2); font-style: italic; }
+  .status-ok { color: #80ed99 !important; font-style: italic; font-size: 0.74rem; }
+  .status-err { color: var(--danger) !important; font-style: italic; font-size: 0.74rem; }
+
+  .leaflet-tooltip { background: var(--panel) !important; border: 1px solid var(--border) !important; color: var(--text) !important; font-family: 'Source Sans 3', sans-serif !important; font-size: 0.8rem !important; border-radius: 4px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; padding: 3px 7px !important; }
+  .leaflet-popup-content-wrapper { background: var(--panel) !important; border: 1px solid var(--border) !important; color: var(--text) !important; font-family: 'Source Sans 3', sans-serif !important; border-radius: 6px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important; }
+  .leaflet-popup-tip { background: var(--panel) !important; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--panel2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
-
 <body>
 
-<div id="topbar">
+<div class="loading-bar" id="loading-bar"></div>
 
-<select id="stationSelect" multiple style="min-width:300px;"></select>
-<button id="clear">Näytä kaikki</button>
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="8.5" cy="16" r="1" fill="#00b4d8" stroke="none"/><circle cx="15.5" cy="16" r="1" fill="#00b4d8" stroke="none"/></svg>
+  <h1>Rataverkkokartta <span>/ Suomi</span></h1>
+  <div class="map-toggle">
+    <button id="tog-osm" class="active" onclick="setBasemap('osm')">OpenStreetMap</button>
+    <button id="tog-pelkistetty" onclick="setBasemap('pelkistetty')">Pelkistetty</button>
+    <button id="tog-mml" onclick="setBasemap('mml')">MML</button>
+    <button id="tog-selkokartta" onclick="setBasemap('selkokartta')">MML Selkokartta</button>
+  </div>
+</header>
 
-<label>
-  <input id="toggleLabels" type="checkbox" checked>
-  Näytä nimet
-</label>
+<div class="main">
+  <div class="sidebar">
 
-<div class="control-group">
-  Teksti:
-  <button id="textMinus">−</button>
-  <button id="textPlus">+</button>
+    <!-- RATAVERKKO -->
+    <!-- SUOMEN KARTTA -->
+    <div class="sidebar-section">
+      <h3>Suomen kartta</h3>
+      <div class="toggle-row" style="margin-bottom:8px">
+        <label class="toggle"><input type="checkbox" id="finland-toggle" onchange="toggleFinlandMap()"><span class="toggle-slider"></span></label>
+        <span>Näytä Suomen ääriviiva</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Täyttöväri</label>
+        <div class="color-pick-row" id="fi-fill-colors"></div>
+      </div>
+      <div class="ctrl-row">
+        <label>Reunaväri</label>
+        <div class="color-pick-row" id="fi-border-colors"></div>
+      </div>
+      <div class="ctrl-row">
+        <label>Reunapaksuus</label>
+        <input type="range" id="fi-border-weight" min="0" max="8" value="2" oninput="updateFinlandStyle()">
+        <span class="val" id="fi-border-weight-val">2</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Läpinäkyvyys</label>
+        <input type="range" id="fi-opacity" min="0" max="100" value="30" oninput="updateFinlandStyle()">
+        <span class="val" id="fi-opacity-val">30%</span>
+      </div>
+      <div class="toggle-row" style="margin-top:4px">
+        <label class="toggle"><input type="checkbox" id="basemap-hide-toggle" onchange="toggleBasemapVisibility()"><span class="toggle-slider"></span></label>
+        <span>Piilota taustakartta</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Rataverkko taustalla</h3>
+      <div class="toggle-row">
+        <label class="toggle"><input type="checkbox" id="railway-toggle" onchange="toggleRailway()"><span class="toggle-slider"></span></label>
+        <span>Näytä koko rataverkko</span>
+      </div>
+      <div class="dim" id="railway-status" style="margin-bottom:6px">Lähde: Digitraffic Infra-API</div>
+      <div class="ctrl-row">
+        <label>Väri</label>
+        <div class="color-pick-row" id="rail-colors"></div>
+      </div>
+      <div class="ctrl-row">
+        <label>Paksuus</label>
+        <input type="range" id="rail-weight" min="1" max="6" value="2" oninput="updateRailStyle()">
+        <span class="val" id="rail-weight-val">2</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Läpinäkyvyys</label>
+        <input type="range" id="rail-opacity" min="10" max="100" value="80" oninput="updateRailStyle()">
+        <span class="val" id="rail-opacity-val">80%</span>
+      </div>
+
+      <!-- Rataosa selector – shown after data is loaded -->
+      <div id="rataosa-selector" style="display:none;margin-top:8px">
+        <div class="appear-label" style="margin-bottom:5px">Näytettävät rataosat</div>
+        <div style="display:flex;gap:5px;margin-bottom:6px">
+          <button class="tool-btn" style="flex:1;padding:5px;font-size:0.75rem;margin:0" onclick="selectAllRataosat()">Kaikki</button>
+          <button class="tool-btn" style="flex:1;padding:5px;font-size:0.75rem;margin:0" onclick="clearAllRataosat()">Ei mitään</button>
+        </div>
+        <div id="rataosa-search-wrap" class="search-wrap" style="margin-bottom:5px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="rataosa-search" placeholder="Hae rataosaa..." oninput="filterRataosat()">
+        </div>
+        <div id="rataosa-list" style="max-height:200px;overflow-y:auto;background:var(--panel2);border:1px solid var(--border);border-radius:6px"></div>
+      </div>
+    </div>
+
+    <!-- ASEMAT -->
+    <div class="sidebar-section">
+      <h3>Lisää asemia</h3>
+      <div class="selected-tags" id="selected-tags"></div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="station-search" placeholder="Hae nimellä tai koodilla..." autocomplete="off" oninput="filterStations()" onfocus="openDropdown()" onclick="openDropdown()">
+      </div>
+      <div class="station-dropdown" id="station-dropdown">
+        <div class="dim" style="padding:9px">Ladataan asemia...</div>
+      </div>
+      <div class="appear-block">
+        <div class="appear-label">Aseman ulkoasu</div>
+        <div class="ctrl-row">
+          <label>Väri</label>
+          <div class="color-pick-row" id="st-colors"></div>
+        </div>
+        <div class="ctrl-row">
+          <label>Koko</label>
+          <input type="range" id="st-size" min="3" max="22" value="8" oninput="document.getElementById('st-size-val').textContent=this.value">
+          <span class="val" id="st-size-val">8</span>
+        </div>
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="st-label-toggle" checked><span class="toggle-slider"></span></label>
+          <span>Näytä nimiselite</span>
+        </div>
+        <div id="label-style-block">
+          <div class="ctrl-row">
+            <label>Tekstin väri</label>
+            <div class="color-pick-row" id="label-colors"></div>
+          </div>
+          <div class="ctrl-row">
+            <label>Fonttikoko</label>
+            <input type="range" id="label-fontsize" min="8" max="24" value="12" oninput="document.getElementById('label-fontsize-val').textContent=this.value+'px'">
+            <span class="val" id="label-fontsize-val">12px</span>
+          </div>
+          <div class="ctrl-row">
+            <label>Fonttityyli</label>
+            <select id="label-font" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:0.78rem;outline:none;">
+              <option value="'Source Sans 3',sans-serif">Source Sans 3</option>
+              <option value="Arial,sans-serif">Arial</option>
+              <option value="'Times New Roman',serif">Times New Roman</option>
+              <option value="'Courier New',monospace">Courier New</option>
+              <option value="Georgia,serif">Georgia</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="add-btn" id="add-btn" onclick="addSelectedStations()" disabled>Lisää valitut</button>
+        <button class="add-all-btn" id="add-all-btn" onclick="addAllStations()">+ Kaikki asemat</button>
+      </div>
+
+    </div>
+
+    <!-- ALUEET -->
+    <div class="sidebar-section">
+      <h3>Alueet</h3>
+      <div class="area-color-editor">
+        <div class="area-color-title">Näkyvyys ja väri – klikkaa väripallea vaihtaaksesi</div>
+        <div id="area-controls"></div>
+      </div>
+      <button class="tool-btn" id="btn-area" onclick="setMode('area')" style="margin-bottom:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3,20 12,4 21,20"/></svg>
+        Piirrä oma alue
+      </button>
+    </div>
+
+    <!-- PIIRTOTYÖKALUT -->
+    <div class="sidebar-section">
+      <h3>Piirtotyökalut</h3>
+      <button class="tool-btn" id="btn-select" onclick="setMode('select')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-7 1-4 7z"/></svg>
+        Valinta / Siirto
+      </button>
+      <button class="tool-btn" id="btn-line" onclick="setMode('line')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21l18-18"/></svg>
+        Piirrä viiva
+      </button>
+      <button class="tool-btn" id="btn-label" onclick="setMode('label')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+        Lisää tekstiselite
+      </button>
+    </div>
+
+    <!-- PIIRRON TYYLI -->
+    <div class="sidebar-section">
+      <h3>Piirron tyyli</h3>
+      <div class="ctrl-row" style="margin-bottom:7px">
+        <label>Väri</label>
+        <div class="color-pick-row" id="draw-colors"></div>
+      </div>
+      <div class="slider-row">
+        <label>Paksuus</label>
+        <input type="range" id="weight-slider" min="1" max="10" value="3" oninput="lineWeight=+this.value;document.getElementById('weight-val').textContent=this.value">
+        <span id="weight-val">3</span>
+      </div>
+      <div class="slider-row">
+        <label>Läpinäkyvyys</label>
+        <input type="range" id="opacity-slider" min="10" max="100" value="70" oninput="lineOpacity=+this.value/100;document.getElementById('opacity-val').textContent=this.value+'%'">
+        <span id="opacity-val">70%</span>
+      </div>
+    </div>
+
+    <!-- TEKSTISELITE -->
+    <div class="sidebar-section" id="label-section" style="display:none">
+      <h3>Tekstiselite</h3>
+      <div class="label-row">
+        <input type="text" id="label-input" placeholder="Kirjoita teksti...">
+        <button onclick="addLabelMode()">+</button>
+      </div>
+    </div>
+
+    <!-- MERKINNÄT -->
+    <div class="sidebar-section" style="flex:1">
+      <h3>Merkinnät <span class="badge" id="layer-count">0</span></h3>
+      <div class="layers-list" id="layers-list"><div class="info-text">Ei merkintöjä vielä.</div></div>
+    </div>
+
+    <!-- VIENTI -->
+    <div class="sidebar-section">
+      <button class="export-btn" onclick="exportMap()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Vie PNG-kuvana
+      </button>
+    </div>
+  </div>
+
+  <div id="map"></div>
 </div>
 
-<div class="control-group">
-  Pallo:
-  <button id="markerMinus">−</button>
-  <button id="markerPlus">+</button>
+<div class="statusbar">
+  <span>Tila: <span id="status-mode">Valinta</span></span>
+  <span id="status-coords">Koordinaatit: –</span>
+  <span id="status-zoom">Zoom: –</span>
 </div>
 
-<div class="control-group">
-  Väri:
-  <input type="color" id="colorPicker" value="#00B451">
-</div>
-
-</div>
-
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
-const map = L.map('map').setView([64.5, 26.0], 5);
+const MML_KEY = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
+const PALETTE = ['#e63946','#00b4d8','#f77f00','#80ed99','#ffd166','#c77dff','#333333','#06d6a0'];
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18,
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+// ---- MAP ----
+const map = L.map('map', { center: [64.5, 26.0], zoom: 5 });
 
-const API_URL = 'https://rata.digitraffic.fi/api/v1/metadata/stations';
+const basemaps = {
+  osm: L.tileLayer('https://tile.openstreetmap.bzh/br/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }),
+  // CartoDB Positron – pelkistetty, vaalea, ei teitä/rakennuksia korostetusti
+  pelkistetty: L.tileLayer('https://cartodb-basemaps-a.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+  }),
+  mml: L.tileLayer(`https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/taustakartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, {
+    maxZoom: 18, attribution: '&copy; Maanmittauslaitos', crossOrigin: true
+  }),
+  selkokartta: L.tileLayer(`https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/selkokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, {
+    maxZoom: 16, attribution: '&copy; Maanmittauslaitos', crossOrigin: true
+  })
+};
 
-const markers = [];
-let labelsVisible = true;
+basemaps.osm.addTo(map);
+let currentBasemap = 'osm';
 
-let textScale = 1;
-let markerScale = 1;
-let markerColor = "#00B451";
-
-function fitToVisible() {
-  const visible = markers.filter(m => map.hasLayer(m.marker));
-  if (!visible.length) return;
-  const group = L.featureGroup(visible.map(v => v.marker));
-  map.fitBounds(group.getBounds().pad(0.2));
+function setBasemap(n) {
+  map.removeLayer(basemaps[currentBasemap]);
+  basemaps[n].addTo(map);
+  currentBasemap = n;
+  ['osm','pelkistetty','mml','selkokartta'].forEach(k => {
+    document.getElementById('tog-' + k).classList.toggle('active', k === n);
+  });
+  // Make sure overlays stay on top
+  if (railwayLayer) railwayLayer.bringToFront();
 }
 
-function showOnly(predicateFn) {
-  markers.forEach(m => {
-    const show = predicateFn(m.data);
-    if (show) {
-      if (!map.hasLayer(m.marker)) m.marker.addTo(map);
-    } else {
-      if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
+map.on('mousemove', e => { document.getElementById('status-coords').textContent = `Koordinaatit: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`; });
+map.on('zoomend', () => { document.getElementById('status-zoom').textContent = `Zoom: ${map.getZoom()}`; });
+document.getElementById('status-zoom').textContent = `Zoom: ${map.getZoom()}`;
+
+// ---- RAILWAY via Digitraffic Infra-API ----
+let railwayLayer = null;
+let railColor = '#e63946';
+let railLoaded = false;
+let railGeoJSON = null;
+let railFeaturesByRata = {};   // ratanumero -> [features]
+let selectedRataosat = new Set(); // selected ratanumerot
+
+function updateRailStyle() {
+  const w = +document.getElementById('rail-weight').value;
+  const o = +document.getElementById('rail-opacity').value / 100;
+  document.getElementById('rail-weight-val').textContent = w;
+  document.getElementById('rail-opacity-val').textContent = Math.round(o * 100) + '%';
+  if (railwayLayer && document.getElementById('railway-toggle').checked) {
+    map.removeLayer(railwayLayer);
+    railwayLayer = buildRailLayer(w, o);
+    railwayLayer.addTo(map);
+  }
+}
+
+function flipFeature(f) {
+  const geom = f.geometry;
+  if (!geom) return f;
+  const flipCoord = c => [c[1], c[0]];
+  let newCoords;
+  if (geom.type === 'LineString') newCoords = geom.coordinates.map(flipCoord);
+  else if (geom.type === 'MultiLineString') newCoords = geom.coordinates.map(l => l.map(flipCoord));
+  else newCoords = geom.coordinates;
+  return { ...f, geometry: { ...geom, coordinates: newCoords } };
+}
+
+function buildRailLayer(w, o) {
+  if (!railGeoJSON) return null;
+  // Filter to selected rataosat only (if any selected, else show all)
+  const features = selectedRataosat.size > 0
+    ? (railGeoJSON.features || []).filter(f => selectedRataosat.has(getRatanumero(f)))
+    : (railGeoJSON.features || []);
+  const fixed = { type: 'FeatureCollection', features: features.map(flipFeature) };
+  return L.geoJSON(fixed, {
+    style: f => ({ color: railColor, weight: w, opacity: o, fill: false }),
+    onEachFeature: (f, layer) => {
+      const p = f.properties || {};
+      const rata = getRatanumero(f);
+      const tooltip = [
+        rata ? `<b>Rata: ${rata}</b>` : '',
+        p.tunniste ? `Tunniste: ${p.tunniste}` : '',
+        p.ratanumero ? `Ratanumero: ${p.ratanumero}` : '',
+      ].filter(Boolean).join('<br>');
+      if (tooltip) layer.bindTooltip(tooltip, { sticky: true });
     }
   });
 }
 
-function updateTooltips() {
-  markers.forEach(m => {
-    if (labelsVisible && map.hasLayer(m.marker)) {
-      m.marker.openTooltip();
-    } else {
-      m.marker.closeTooltip();
+function getRatanumero(f) {
+  const p = f.properties || {};
+  return p.ratanumero || p.rata || p.tunniste || p.name || 'Tuntematon';
+}
+
+function buildRataosaList() {
+  // Group features by ratanumero
+  railFeaturesByRata = {};
+  (railGeoJSON.features || []).forEach(f => {
+    const r = getRatanumero(f);
+    if (!railFeaturesByRata[r]) railFeaturesByRata[r] = [];
+    railFeaturesByRata[r].push(f);
+  });
+  // Default: all selected
+  selectedRataosat = new Set(Object.keys(railFeaturesByRata));
+  // Show selector
+  document.getElementById('rataosa-selector').style.display = 'block';
+  renderRataosaList('');
+}
+
+function renderRataosaList(q) {
+  const list = document.getElementById('rataosa-list');
+  const keys = Object.keys(railFeaturesByRata)
+    .filter(r => !q || r.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, 'fi', { numeric: true }));
+
+  if (!keys.length) { list.innerHTML = '<div class="dim" style="padding:8px">Ei tuloksia</div>'; return; }
+
+  list.innerHTML = keys.map(r => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid rgba(42,63,85,0.4);font-size:0.8rem;cursor:pointer" onclick="toggleRataosa('${r.replace(/'/g,"\'")}')">
+      <div style="width:14px;height:14px;border-radius:3px;border:2px solid ${railColor};background:${selectedRataosat.has(r) ? railColor : 'transparent'};flex-shrink:0;transition:background 0.1s"></div>
+      <span style="flex:1">${r}</span>
+      <span style="font-size:0.68rem;color:var(--text2)">${railFeaturesByRata[r].length} osuutta</span>
+    </div>`).join('');
+}
+
+function filterRataosat() {
+  renderRataosaList(document.getElementById('rataosa-search').value);
+}
+
+function toggleRataosa(r) {
+  if (selectedRataosat.has(r)) selectedRataosat.delete(r);
+  else selectedRataosat.add(r);
+  renderRataosaList(document.getElementById('rataosa-search').value);
+  if (document.getElementById('railway-toggle').checked) {
+    const w = +document.getElementById('rail-weight').value;
+    const o = +document.getElementById('rail-opacity').value / 100;
+    if (railwayLayer) map.removeLayer(railwayLayer);
+    railwayLayer = buildRailLayer(w, o);
+    if (railwayLayer) railwayLayer.addTo(map);
+  }
+}
+
+function selectAllRataosat() {
+  selectedRataosat = new Set(Object.keys(railFeaturesByRata));
+  renderRataosaList(document.getElementById('rataosa-search').value);
+  if (document.getElementById('railway-toggle').checked) {
+    const w = +document.getElementById('rail-weight').value;
+    const o = +document.getElementById('rail-opacity').value / 100;
+    if (railwayLayer) map.removeLayer(railwayLayer);
+    railwayLayer = buildRailLayer(w, o);
+    if (railwayLayer) railwayLayer.addTo(map);
+  }
+}
+
+function clearAllRataosat() {
+  selectedRataosat.clear();
+  renderRataosaList(document.getElementById('rataosa-search').value);
+  if (railwayLayer) { map.removeLayer(railwayLayer); railwayLayer = null; }
+}
+
+async function toggleRailway() {
+  const on = document.getElementById('railway-toggle').checked;
+  const status = document.getElementById('railway-status');
+  if (!on) {
+    if (railwayLayer) map.removeLayer(railwayLayer);
+    status.textContent = 'Lähde: Digitraffic Infra-API'; status.className = 'dim'; return;
+  }
+  if (railLoaded && railGeoJSON) {
+    const w = +document.getElementById('rail-weight').value;
+    const o = +document.getElementById('rail-opacity').value / 100;
+    railwayLayer = buildRailLayer(w, o);
+    if (railwayLayer) railwayLayer.addTo(map); return;
+  }
+
+  status.textContent = 'Ladataan rataverkkoa…';
+  status.className = 'dim';
+  document.getElementById('loading-bar').classList.add('active');
+
+  const url = 'https://rata.digitraffic.fi/infra-api/0.8/radat.geojson?srsName=epsg:4326';
+  try {
+    const res = await fetch(url, {
+      headers: { 'Digitraffic-User': 'RataverkkokarttaApp/1.0' }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    railGeoJSON = await res.json();
+    railLoaded = true;
+    buildRataosaList();
+    const w = +document.getElementById('rail-weight').value;
+    const o = +document.getElementById('rail-opacity').value / 100;
+    railwayLayer = buildRailLayer(w, o);
+    if (railwayLayer) railwayLayer.addTo(map);
+    const count = Object.keys(railFeaturesByRata).length;
+    status.textContent = `✓ Ladattu – ${count} rataosuutta (Digitraffic Infra-API)`;
+    status.className = 'status-ok';
+  } catch(e) {
+    status.textContent = `✗ Lataus epäonnistui: ${e.message}`;
+    status.className = 'status-err';
+    document.getElementById('railway-toggle').checked = false;
+  }
+  document.getElementById('loading-bar').classList.remove('active');
+}
+
+// ---- AREA PRESETS ----
+function flipCoords(c) { return c.map(x => [x[1], x[0]]); }
+
+const USER_AREAS = {
+  ita:      { name:'Itä',      color:'#f77f00', coords: flipCoords([[26.312679,63.8463345],[28.8221939,63.6675059],[30.1080611,63.6813022],[30.4917473,63.4412146],[30.8443237,63.3715819],[30.916913,63.3064388],[31.1657905,63.2364788],[31.21764,63.1148123],[31.5391068,62.9124709],[31.3731884,62.6706603],[31.0517217,62.3788198],[30.6472957,62.2004054],[30.0251019,61.801216],[29.5999362,61.5057995],[29.4547576,61.4959036],[29.4547576,61.4463768],[29.2577296,61.282379],[28.7496047,61.077424],[28.6459057,60.956831],[28.5629465,60.956831],[27.7644645,60.9366876],[27.363712,61.521617],[27.089721,61.5692767],[27.1381199,61.6181942],[27.0916614,61.5699161],[26.7151091,61.6406004],[26.3035708,61.6933842],[26.2578625,62.521977],[26.2643352,62.9625975],[26.312679,63.8463345]]) },
+  etela:    { name:'Etelä',    color:'#80ed99', coords: flipCoords([[28.4859683,60.9606612],[28.2999432,60.8563],[28.2355499,60.7935191],[28.1783114,60.7760581],[27.8420353,60.5833581],[27.7204036,60.4495448],[22.6977265,59.7252854],[19.4516319,59.9938573],[19.3800838,60.3851102],[19.7306695,60.4874836],[20.9255229,60.5191891],[21.1616317,60.8902822],[24.5924277,60.9542982],[26.3035708,61.6933842],[26.67747749636284,61.645427020122746],[27.350325174560563,61.52394558774338],[27.76196795053433,60.940331507850914],[28.4859683,60.9606612]]) },
+  lansi:    { name:'Länsi',    color:'#ffd166', coords: flipCoords([[26.2831645,63.8515228],[25.6463447,63.2468638],[24.0032807,62.1956515],[22.9690371,61.9372078],[22.413713,61.7930721],[21.3670213,61.7254781],[21.1616317,60.8902822],[24.5924277,60.9542982],[26.3035708,61.6933842],[26.26163480950823,62.45359317260123],[26.2831645,63.8515228]]) },
+  pohjoinen:{ name:'Pohjoinen',color:'#00b4d8', coords: flipCoords([[21.3230069,61.7387749],[22.43005914881653,61.79731478206976],[23.975027597189023,62.18859142592562],[25.6463447,63.2468638],[26.2831645,63.8515228],[28.762574196763538,63.671754413552236],[30.08347311936359,63.681038391142245],[29.9532311,63.7544385],[30.2365763,63.8274361],[30.5317277,64.1072335],[30.4726974,64.2101538],[30.4490853,64.2460858],[30.3428308,64.271723],[30.2011582,64.3433805],[30.0476795,64.3842441],[29.9768432,64.5876531],[30.0949037,64.6382692],[30.0358735,64.7845241],[29.7407221,64.7845241],[29.5990495,64.9249875],[29.6462737,65.0647188],[29.8587827,65.1045079],[29.7997524,65.1343108],[29.8705887,65.2037209],[29.6462737,65.2334125],[29.5990495,65.2630708],[29.7407221,65.3469219],[29.7748262,65.5634482],[29.6939514,65.6436207],[29.9851009,65.7235461],[30.1306756,65.6769529],[29.888051,66.126036],[29.7263013,66.2566271],[29.3057521,66.6764137],[29.1440023,66.7595262],[29.0307775,66.9565899],[29.7748262,67.4516623],[29.920401,67.538339],[29.9689259,67.6739071],[29.6205491,67.7897434],[29.3212578,68.0745999],[28.6628171,68.1934977],[28.4433368,68.5319208],[28.8024863,68.8509431],[28.4034313,68.9228149],[28.9621083,69.0515971],[28.8224391,69.0872363],[28.8423918,69.2150587],[29.3412106,69.4754631],[29.1616358,69.6843074],[28.3435731,69.8361648],[27.8647071,70.0891108],[27.1863136,69.9664384],[27.0067389,69.9390796],[26.5079201,69.9390796],[26.3882036,69.8361648],[26.1088651,69.7327441],[25.8694321,69.6773788],[25.9093376,69.5801408],[25.7696684,69.4124102],[25.8095739,69.4053929],[25.6898574,69.2716286],[25.7696684,69.0016047],[25.5701409,68.9012779],[25.4703771,68.8940942],[25.1511331,68.7932774],[25.1311804,68.6411903],[24.8717946,68.590264],[24.0537319,68.771614],[23.8542044,68.829336],[23.6347242,68.6992505],[23.3952912,68.6774956],[23.1957637,68.6339222],[23.0161889,68.6992505],[22.7568032,68.6920012],[22.4375592,68.7282241],[21.5995437,69.2645654],[21.3002524,69.2998584],[20.9411029,69.2008931],[21.0807722,69.0801131],[21.0408667,69.0515971],[20.7415754,69.1085921],[20.5620007,69.0587296],[20.8413392,69.0087534],[20.8413392,68.9299893],[21.0209139,68.8653362],[21.4598744,68.6774956],[21.6594019,68.6048262],[21.8788822,68.568403],[21.9786459,68.4953793],[22.2779372,68.4807462],[22.6570394,68.4221187],[22.9363779,68.3265245],[23.1159527,68.2379261],[23.0959999,68.1489831],[23.2755747,68.1341257],[23.4152439,68.0223885],[23.6347242,67.9625737],[23.4551494,67.804823],[23.5349604,67.5776042],[23.3952912,67.478459],[23.7344879,67.4325596],[23.7344879,67.2943291],[23.5349604,67.2249134],[23.5748659,67.1475492],[23.9539681,66.7963239],[23.8142989,66.4957679],[23.5948187,66.4240475],[23.7145352,66.1834867],[23.8342517,66.1350978],[24.1534956,65.7774094],[24.9316529,65.5719385],[25.2309441,65.4727324],[25.2508969,65.1393096],[24.4527869,65.0721175],[24.4926924,64.7336008],[23.379889,63.9599267],[22.7729105,63.989518],[22.4357002,63.7519088],[22.1669892,63.4557137],[22.0998115,63.3293474],[21.1727587,63.4316868],[21.0518387,63.2145358],[21.1458876,63.0871064],[21.0115321,62.6274108],[21.132452,62.3605938],[21.2668075,62.1855664],[21.3474208,61.8831456],[21.3230069,61.7387749]]) }
+};
+
+const areaLayers={}, areaColors={}, areaVisible={};
+
+// ---- FINLAND MAP ----
+let finlandLayer = null;
+let fiLoaded = false;
+let fiGeoJSON = null;
+let fiFillColor = '#d0e8f0';
+let fiBorderColor = '#2a6496';
+let basemapHidden = false;
+
+// Accurate Finland boundary provided by user
+const FINLAND_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[22.9403565,59.8256549],[23.2312685,59.8455882],[23.9254903,59.9682474],[24.3288001,60.0640692],[24.3552466,59.9914022],[24.5139259,59.9947087],[24.7387215,60.1299915],[25.3073222,60.212209],[25.5188945,60.2286279],[26.1139417,60.3007731],[26.1734465,60.3792957],[26.5172515,60.3890978],[26.8279984,60.4478481],[27.0395708,60.4706669],[27.0395708,60.5064925],[27.1651918,60.5227637],[27.3172595,60.5097474],[27.4098224,60.4543694],[27.7536274,60.4804414],[27.8461903,60.5487808],[27.8726369,60.6072427],[28.5205772,60.9590089],[28.6395806,60.9558009],[28.8709879,61.1254684],[29.2941326,61.2815245],[29.5321515,61.487347],[30.3255478,61.9540636],[31.2511767,62.4993603],[31.5949818,62.9207161],[31.2842349,63.1156988],[31.2445651,63.226108],[30.7751389,63.4101768],[30.484227,63.4574876],[30.3718291,63.5577641],[30.2792662,63.5724809],[29.9685194,63.7543392],[30.266045,63.824425],[30.4445592,63.9756776],[30.5767919,64.1059127],[30.4511709,64.2786156],[30.0610843,64.3960114],[30.0015796,64.5754264],[30.1536472,64.6519588],[30.067696,64.7310985],[30.1073658,64.7790349],[30.0544727,64.7903017],[29.7503375,64.7987487],[29.6379396,64.9195321],[29.631328,65.0453533],[29.9090167,65.1038676],[29.849512,65.1511421],[29.9090167,65.2121961],[29.6445513,65.2454391],[29.7468981,65.34281],[29.7601213,65.4831074],[29.8923541,65.5543431],[29.7601213,65.6281129],[30.0047519,65.6826224],[30.1568195,65.6662816],[30.0245868,65.9830739],[29.9055773,66.1547167],[29.7204515,66.2826901],[29.4228291,66.5817982],[29.0327426,66.9314248],[29.6013433,67.3245899],[29.9385367,67.5225767],[30.0321031,67.6734547],[29.6618515,67.8036991],[29.3378814,68.0817789],[28.6701061,68.197484],[28.4519222,68.5362839],[28.6833283,68.7146019],[28.7825028,68.8724485],[28.4453094,68.8938863],[28.4386977,68.9081667],[28.9411821,69.0551912],[28.8486191,69.0929738],[28.8486191,69.2223556],[29.3180453,69.4788267],[29.1130846,69.7024719],[28.3267396,69.8451692],[28.3531861,69.8861349],[28.1350022,69.9270208],[28.0226044,70.013074],[27.956488,70.0897689],[27.4738386,70.0514568],[27.176315,69.9497008],[27.0837521,69.9247515],[26.5349863,69.9655621],[26.0787834,69.7401154],[25.8605994,69.6552352],[25.959774,69.6069085],[25.8275412,69.5515435],[25.8010947,69.405525],[25.7349783,69.3379753],[25.6754772,69.1881522],[25.7349819,69.0088859],[25.5895259,68.8734695],[25.4374583,68.9020473],[25.1134881,68.7755497],[25.0936532,68.6290626],[24.8767458,68.5600169],[24.7841829,68.6444436],[24.1031844,68.7788673],[23.8916121,68.8457762],[23.7726026,68.8171256],[23.6800397,68.709356],[23.3692929,68.6901424],[23.1907787,68.6372194],[23.058546,68.6877395],[22.8139154,68.6853363],[22.5560616,68.7501303],[22.4106057,68.7165569],[22.3378777,68.8242917],[22.2056449,68.921997],[22.18581,68.9528867],[21.6304326,69.2781393],[21.2866276,69.3085303],[20.9824923,69.2195752],[20.9891039,69.1537955],[21.0882785,69.0996135],[21.0684436,69.0405674],[20.7048036,69.1090461],[20.5791825,69.0594795],[20.7841432,69.0334712],[20.8899294,68.9695018],[20.9031527,68.8958257],[21.0155505,68.8839194],[21.3064625,68.7645034],[21.3924137,68.7453372],[21.4386952,68.6853363],[21.6899373,68.6179437],[21.7362188,68.5793424],[21.8816748,68.5793424],[21.9676261,68.5285775],[22.040354,68.477698],[22.3180428,68.4704201],[22.4965569,68.4291345],[22.7147409,68.3902087],[22.9593714,68.319485],[23.0982158,68.2509911],[23.1444972,68.130631],[23.2899532,68.147864],[23.3891278,68.0467439],[23.6403699,67.9476616],[23.6007001,67.8904971],[23.5345837,67.8830304],[23.4684674,67.815723],[23.44639,67.7071009],[23.5236616,67.6526007],[23.5236616,67.5895587],[23.4684676,67.5390038],[23.4243125,67.4798863],[23.44639,67.4375692],[23.6009331,67.4460386],[23.7223598,67.4248594],[23.7333986,67.2888653],[23.5457391,67.2675463],[23.5347004,67.186361],[23.865864,66.9325068],[23.9762519,66.7980578],[23.8989804,66.767596],[23.8879416,66.5489111],[23.6119719,66.430015],[23.7002822,66.2439352],[23.7002822,66.1949718],[23.8879416,66.1637638],[24.0204071,65.9846921],[24.1087174,65.8134025],[24.5061138,65.731865],[24.6716956,65.6364116],[24.8814326,65.6318575],[25.0911696,65.5634487],[25.3119454,65.4673737],[25.2677902,65.1631122],[25.4002548,65.032966],[25.4664875,64.9583108],[25.2457117,65.00033],[25.2125954,64.9536379],[25.3781772,64.8974997],[25.334022,64.8365505],[25.0690911,64.9115452],[24.6496171,64.8600088],[24.5281904,64.7942739],[24.5061129,64.6812116],[24.3184534,64.5487069],[23.9100183,64.3104805],[23.6009322,64.0943013],[23.5898934,64.0653497],[23.4132727,64.0798293],[23.4132727,63.929844],[23.1152254,63.9249923],[23.0326717,63.8752946],[22.9935667,63.7871485],[22.8632165,63.7391272],[22.8501814,63.6910241],[22.6242411,63.7198958],[22.580791,63.6852462],[22.4895459,63.6158199],[22.4243708,63.5829762],[22.4591308,63.5597696],[22.4417508,63.4900361],[22.3765757,63.5559],[22.3548506,63.5810431],[22.2809855,63.5094236],[22.1940854,63.4686946],[22.3809207,63.3344617],[22.3591956,63.3071493],[22.2853305,63.3130041],[22.1289103,63.2426675],[21.8899349,63.2759034],[21.7030996,63.2465796],[21.6596495,63.2230991],[21.5553693,63.2856714],[21.5249543,63.1584293],[21.5553694,63.111306],[21.6726846,63.0542631],[21.5901295,63.0621377],[21.5249544,63.0896822],[21.4641243,63.0325969],[21.4728143,62.9892161],[21.3859142,62.8785009],[21.264254,62.9022608],[21.2208039,62.8130617],[21.1295587,62.8071055],[21.1425938,62.7474767],[21.1686638,62.7315554],[21.0730737,62.667784],[21.0861087,62.6158683],[21.1339028,62.633851],[21.1903879,62.6018771],[21.1599728,62.5618613],[21.1208677,62.4756447],[21.1816978,62.4696203],[21.1730078,62.425404],[21.2294929,62.4294263],[21.2381829,62.395219],[21.290323,62.4012584],[21.3120481,62.3488763],[21.3250831,62.3589569],[21.3337731,62.3347577],[21.294668,62.324669],[21.3381181,62.2923623],[21.3120481,62.249907],[21.3772232,62.2579983],[21.4076382,62.2013134],[21.3815682,62.1911799],[21.3511531,62.1445218],[21.3294281,62.1587297],[21.3163931,62.0754172],[21.285978,61.9979961],[21.3554967,61.9346951],[21.3989468,61.9346951],[21.4988819,61.8158995],[21.5162619,61.748103],[21.555367,61.7275291],[21.546677,61.6616002],[21.6770272,61.5603733],[21.546677,61.5934634],[21.4945369,61.5996638],[21.533642,61.5334616],[21.6031621,61.5106719],[21.4901919,61.5127444],[21.5814371,61.4422026],[21.4554319,61.4338931],[21.520607,61.388151],[21.5466777,61.340261],[21.4945376,61.2797697],[21.5640577,61.2296196],[21.4206725,61.2484353],[21.4815026,61.2191616],[21.4467425,61.1752],[21.4423975,61.1038939],[21.4467425,61.0912937],[21.3902575,61.0870926],[21.4163275,61.0429466],[21.2903223,61.0849918],[21.4250175,60.9460308],[21.4250175,60.9143639],[21.3685324,60.916476],[21.3685324,60.8890077],[21.3468074,60.8720923],[21.3859125,60.7788975],[21.4423975,60.7151998],[21.3468074,60.7066972],[21.3815674,60.6492459],[21.4163275,60.6279416],[21.4597776,60.5810226],[21.5684027,60.5297603],[21.5684027,60.4869797],[21.6683379,60.5212087],[21.6857179,60.5767538],[21.7813081,60.5959587],[21.8334482,60.6258104],[21.8247582,60.5852907],[21.7943431,60.4976802],[21.8421382,60.4912603],[21.8986233,60.4805577],[21.8725532,60.5361726],[21.9377283,60.5276226],[22.0202835,60.4569997],[22.1984288,60.4312804],[22.2809839,60.3883698],[22.320089,60.3561496],[22.3027089,60.3131399],[22.337469,60.276537],[22.324434,60.250675],[22.4156791,60.2420497],[22.4243691,60.1664822],[22.4287141,60.1556726],[22.350504,60.0690679],[22.3896091,59.9952746],[22.5851344,60.0213381],[22.6633445,60.0191669],[22.7198296,59.9974474],[22.8197648,59.971365],[22.9066649,59.8973534],[22.9403565,59.8256549]]]}}]};
+
+function toggleFinlandMap() {
+  const on = document.getElementById('finland-toggle').checked;
+  if (!on) {
+    if (finlandLayer) { map.removeLayer(finlandLayer); }
+    return;
+  }
+  fiGeoJSON = FINLAND_GEOJSON;
+  fiLoaded = true;
+  addFinlandLayer();
+}
+
+function addFinlandLayer() {
+  if (finlandLayer) map.removeLayer(finlandLayer);
+  const w = +document.getElementById('fi-border-weight').value;
+  const o = +document.getElementById('fi-opacity').value / 100;
+  finlandLayer = L.geoJSON(fiGeoJSON, {
+    style: {
+      fillColor: fiFillColor,
+      fillOpacity: o,
+      color: fiBorderColor,
+      weight: w
     }
+  }).addTo(map);
+  // Send to back so it's below everything else
+  finlandLayer.bringToBack();
+}
+
+function updateFinlandStyle() {
+  const w = +document.getElementById('fi-border-weight').value;
+  const o = +document.getElementById('fi-opacity').value / 100;
+  document.getElementById('fi-border-weight-val').textContent = w;
+  document.getElementById('fi-opacity-val').textContent = Math.round(o*100) + '%';
+  if (finlandLayer) {
+    finlandLayer.setStyle({ fillColor: fiFillColor, fillOpacity: o, color: fiBorderColor, weight: w });
+    finlandLayer.bringToBack();
+  }
+}
+
+function toggleBasemapVisibility() {
+  basemapHidden = document.getElementById('basemap-hide-toggle').checked;
+  if (basemapHidden) {
+    map.removeLayer(basemaps[currentBasemap]);
+  } else {
+    basemaps[currentBasemap].addTo(map);
+    if (finlandLayer) finlandLayer.bringToBack();
+    if (railwayLayer) railwayLayer.bringToFront();
+  }
+}
+
+function initFinlandMap() {
+  makeSwatches('fi-fill-colors', fiFillColor, c => { fiFillColor = c; updateFinlandStyle(); });
+  makeSwatches('fi-border-colors', fiBorderColor, c => { fiBorderColor = c; updateFinlandStyle(); });
+}
+
+function buildAreaControls() {
+  const cont = document.getElementById('area-controls');
+  cont.innerHTML = '';
+  Object.entries(USER_AREAS).forEach(([key, area]) => {
+    areaColors[key] = area.color; areaVisible[key] = false;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:0.82rem;color:var(--text)';
+    row.id = 'arearow-' + key;
+    const tl = document.createElement('label'); tl.className = 'toggle';
+    const cb = document.createElement('input'); cb.type = 'checkbox';
+    cb.onchange = () => toggleAreaLayer(key, cb.checked);
+    const sl = document.createElement('span'); sl.className = 'toggle-slider';
+    tl.appendChild(cb); tl.appendChild(sl);
+    const dot = document.createElement('div');
+    dot.id = 'areaDot-' + key;
+    dot.style.cssText = `width:16px;height:16px;border-radius:50%;background:${area.color};border:2px solid rgba(255,255,255,0.25);flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;`;
+    dot.title = 'Klikkaa vaihtaaksesi väriä';
+    const picker = document.createElement('input'); picker.type = 'color'; picker.value = area.color;
+    picker.style.cssText = 'position:absolute;width:200%;height:200%;top:-50%;left:-50%;opacity:0;cursor:pointer;';
+    picker.oninput = e => changeAreaColor(key, e.target.value);
+    dot.appendChild(picker);
+    const nm = document.createElement('span'); nm.textContent = area.name; nm.style.flex = '1';
+    row.appendChild(tl); row.appendChild(dot); row.appendChild(nm);
+    cont.appendChild(row);
   });
 }
 
-function updateSizes() {
-  const zoom = map.getZoom();
-
-  const radius = Math.max(4, zoom * 1.5 * markerScale);
-  const fontSize = Math.max(12, zoom * 1.6 * textScale);
-
-  markers.forEach(m => {
-    m.marker.setRadius(radius);
-    m.marker.setStyle({ color: markerColor, fillColor: markerColor });
-
-    const el = m.marker.getTooltip()?.getElement();
-    if (el) el.style.fontSize = fontSize + "px";
-  });
+function toggleAreaLayer(key, show) {
+  const area = USER_AREAS[key];
+  if (show) {
+    const color = areaColors[key];
+    const poly = L.polygon(area.coords, { color, weight: 2, fillColor: color, fillOpacity: 0.2 }).addTo(map);
+    poly.bindTooltip(area.name, { sticky: true });
+    areaLayers[key] = poly; areaVisible[key] = true;
+    items.push({ id:'preset_'+key, type:'area', layer:poly, name:area.name, color, presetKey:key });
+    map.fitBounds(poly.getBounds(), { padding:[40,40] }); updateLayers();
+  } else {
+    if (areaLayers[key]) { map.removeLayer(areaLayers[key]); delete areaLayers[key]; }
+    areaVisible[key] = false;
+    const idx = items.findIndex(i => i.id==='preset_'+key);
+    if (idx !== -1) items.splice(idx, 1); updateLayers();
+  }
 }
+
+function changeAreaColor(key, color) {
+  areaColors[key] = color;
+  document.getElementById('areaDot-' + key).style.background = color;
+  if (areaLayers[key]) areaLayers[key].setStyle({ color, fillColor: color });
+  const item = items.find(i => i.id==='preset_'+key);
+  if (item) { item.color = color; updateLayers(); }
+}
+
+// ---- COLOR SWATCHES ----
+function makeSwatches(containerId, initialColor, onSelect) {
+  const cont = document.getElementById(containerId);
+  PALETTE.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch' + (c === initialColor ? ' selected' : '');
+    s.style.background = c;
+    s.onclick = () => {
+      cont.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+      onSelect(c);
+    };
+    cont.appendChild(s);
+  });
+  // Free color picker with visible preview
+  const fc = document.createElement('div'); fc.className = 'free-color'; fc.title = 'Vapaa värinvalinta';
+  const preview = document.createElement('div'); preview.className = 'free-color-preview'; preview.style.background = '#888';
+  const fci = document.createElement('input'); fci.type = 'color'; fci.value = initialColor;
+  fci.oninput = e => {
+    cont.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+    preview.style.background = e.target.value;
+    onSelect(e.target.value);
+  };
+  fc.appendChild(preview); fc.appendChild(fci); cont.appendChild(fc);
+}
+
+makeSwatches('rail-colors', railColor, c => { railColor = c; updateRailStyle(); });
+
+// ---- STATIONS ----
+let allStations = [], selectedCodes = new Set();
 
 async function loadStations() {
-  const res = await fetch(API_URL);
-  const dataRaw = await res.json();
-
-  const data = dataRaw.filter(st => st.countryCode === "FI");
-  data.sort((a,b)=>a.stationName.localeCompare(b.stationName));
-
-  data.forEach(st => {
-    if (!st.latitude || !st.longitude) return;
-
-    const marker = L.circleMarker([st.latitude, st.longitude], {
-      radius: 8,
-      color: markerColor,
-      fillColor: markerColor,
-      fillOpacity: 0.9,
-      weight: 1
-    });
-
-    marker.bindPopup(`<b>${st.stationName}</b><br>Koodi: ${st.stationShortCode}`);
-
-    marker.bindTooltip(
-      `${st.stationName} (${st.stationShortCode})`,
-      { permanent:true, direction:'top', offset:[0,-6], className:'station-label' }
-    );
-
-    marker.addTo(map);
-    markers.push({ data:st, marker });
-
-    const option = new Option(
-      `${st.stationName} (${st.stationShortCode})`,
-      st.stationShortCode,
-      false,false
-    );
-    $('#stationSelect').append(option);
-  });
-
-  fitToVisible();
-  updateTooltips();
-  updateSizes();
+  try {
+    const res = await fetch('https://rata.digitraffic.fi/api/v1/metadata/stations');
+    const data = await res.json();
+    allStations = data.filter(s => s.passengerTraffic && s.longitude && s.latitude && (s.countryCode === 'FI' || (!s.countryCode && !s.stationName.match(/Pietari|Viipuri|Buslovskaya|Vainikkala.*venäjä/i))))
+      .sort((a,b) => a.stationName.localeCompare(b.stationName,'fi'));
+    renderDropdown('');
+  } catch(e) {
+    document.getElementById('station-dropdown').innerHTML = '<div class="dim" style="padding:9px;color:var(--danger)">Lataus epäonnistui.</div>';
+  }
 }
 
-$('#stationSelect').select2({
-  placeholder:"Valitse asema(t)...",
-  allowClear:true
-});
+function filterStations() { openDropdown(); renderDropdown(document.getElementById('station-search').value.toLowerCase().trim()); }
+function openDropdown() { document.getElementById('station-dropdown').classList.add('open'); }
+function closeDropdown() { document.getElementById('station-dropdown').classList.remove('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.search-wrap') && !e.target.closest('.station-dropdown')) closeDropdown(); });
 
-$('#stationSelect').on('change', function(){
-  const selected = $(this).val();
-  if (!selected || !selected.length) {
-    showOnly(()=>true);
-  } else {
-    showOnly(st=>selected.includes(st.stationShortCode));
+function renderDropdown(q) {
+  const dd = document.getElementById('station-dropdown');
+  const f = allStations.filter(s => !q || s.stationName.toLowerCase().includes(q) || s.stationShortCode.toLowerCase().includes(q)).slice(0,100);
+  if (!f.length) { dd.innerHTML = '<div class="dim" style="padding:9px">Ei tuloksia</div>'; return; }
+  dd.innerHTML = f.map(s => `<div class="station-option ${selectedCodes.has(s.stationShortCode)?'selected':''}" onclick="toggleStation('${s.stationShortCode}')"><span class="code">${s.stationShortCode}</span><span>${s.stationName}</span></div>`).join('');
+}
+
+function toggleStation(code) {
+  if (selectedCodes.has(code)) selectedCodes.delete(code); else selectedCodes.add(code);
+  updateTags(); renderDropdown(document.getElementById('station-search').value.toLowerCase().trim());
+}
+
+function updateTags() {
+  document.getElementById('add-btn').disabled = selectedCodes.size === 0;
+  const cont = document.getElementById('selected-tags');
+  if (!selectedCodes.size) { cont.innerHTML=''; return; }
+  cont.innerHTML = [...selectedCodes].map(code => {
+    const s = allStations.find(x => x.stationShortCode===code);
+    return `<div class="station-tag"><span>${s?s.stationName:code}</span><button onclick="toggleStation('${code}')">✕</button></div>`;
+  }).join('');
+}
+
+let stColor = '#00b4d8';
+let labelTextColor = '#1a1a2e';
+makeSwatches('st-colors', stColor, c => { stColor = c; });
+makeSwatches('label-colors', labelTextColor, c => { labelTextColor = c; });
+
+function getLabelStyle() {
+  return {
+    color: labelTextColor,
+    fontSize: document.getElementById('label-fontsize')?.value || '12',
+    font: document.getElementById('label-font')?.value || "'Source Sans 3',sans-serif"
+  };
+}
+
+function placeStation(s, sc, ss, showLabel, customId) {
+  const circle = L.circleMarker([s.latitude, s.longitude], { radius:ss, fillColor:sc, color:'#fff', weight:2, fillOpacity:1 }).addTo(map);
+  if (showLabel) {
+    const ls = getLabelStyle();
+    circle.bindTooltip(s.stationName, {
+      permanent: true,
+      direction: 'right',
+      offset: [ss + 3, 0],
+      className: 'station-label',
+      // custom HTML tooltip
+    });
+    // Override tooltip style with inline CSS via custom class + data
+    const tip = circle.getTooltip();
+    if (tip) {
+      tip.options.className = 'station-label-custom';
+      // We use a div-icon approach for full style control
+    }
+    circle.unbindTooltip();
+    // Use permanent divIcon label instead for full style control
+    const labelMarker = L.marker([s.latitude, s.longitude], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="st-label" style="color:${ls.color};font-size:${ls.fontSize}px;font-family:${ls.font};background:white;border:1.5px solid ${ls.color};padding:2px 6px;border-radius:3px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.15);line-height:1.5;display:inline-block">${s.stationName}</div>`,
+        iconAnchor: [-(ss + 5), parseInt(ls.fontSize)/2 + 2]
+      }),
+      interactive: false
+    }).addTo(map);
+    circle.bindPopup(`<b>${s.stationName}</b><br>Koodi: <code>${s.stationShortCode}</code>`);
+    const id = customId || ('st_'+s.stationShortCode+'_'+Date.now());
+    items.push({ id, type:'station', layer:circle, labelLayer:labelMarker, name:s.stationName, color:sc });
+    return;
   }
-  fitToVisible();
-  updateTooltips();
-});
+  circle.bindPopup(`<b>${s.stationName}</b><br>Koodi: <code>${s.stationShortCode}</code>`);
+  const id = customId || ('st_'+s.stationShortCode+'_'+Date.now());
+  items.push({ id, type:'station', layer:circle, name:s.stationName, color:sc });
+}
 
-document.getElementById('clear').addEventListener('click', ()=>{
-  $('#stationSelect').val(null).trigger('change');
-  showOnly(()=>true);
-  fitToVisible();
-  updateTooltips();
-});
+function addSelectedStations() {
+  const showLabel = document.getElementById('st-label-toggle').checked;
+  const sc = stColor, ss = +document.getElementById('st-size').value;
+  const codes = [...selectedCodes];
+  codes.forEach(code => { const s = allStations.find(x => x.stationShortCode===code); if(s) placeStation(s, sc, ss, showLabel); });
+  updateLayers();
+  const added = codes.map(c=>allStations.find(x=>x.stationShortCode===c)).filter(Boolean);
+  if (added.length===1) map.flyTo([added[0].latitude,added[0].longitude],Math.max(map.getZoom(),10),{duration:1});
+  else if (added.length>1) { const lats=added.map(s=>s.latitude),lngs=added.map(s=>s.longitude); map.flyToBounds([[Math.min(...lats),Math.min(...lngs)],[Math.max(...lats),Math.max(...lngs)]],{padding:[60,60],duration:1}); }
+  selectedCodes.clear(); updateTags(); renderDropdown('');
+  document.getElementById('station-search').value=''; closeDropdown();
+}
 
-document.getElementById('toggleLabels').addEventListener('change', e=>{
-  labelsVisible = e.target.checked;
-  updateTooltips();
-});
+let allStationsActive = false;
+const allStationIds = new Set();
 
-/* 🔘 Tekstin koko */
-document.getElementById('textPlus').onclick = ()=>{ textScale += 0.2; updateSizes(); };
-document.getElementById('textMinus').onclick = ()=>{ textScale = Math.max(0.4, textScale - 0.2); updateSizes(); };
+function addAllStations() {
+  if (!allStations.length) { alert('Asemat eivät ole vielä latautuneet. Yritä hetken kuluttua uudelleen.'); return; }
+  const btn = document.getElementById('add-all-btn');
 
-/* 🔵 Pallon koko */
-document.getElementById('markerPlus').onclick = ()=>{ markerScale += 0.2; updateSizes(); };
-document.getElementById('markerMinus').onclick = ()=>{ markerScale = Math.max(0.4, markerScale - 0.2); updateSizes(); };
+  if (allStationsActive) {
+    // Remove all stations that were added with "kaikki asemat"
+    [...allStationIds].forEach(id => {
+      const idx = items.findIndex(i => i.id === id);
+      if (idx !== -1) {
+        map.removeLayer(items[idx].layer);
+        if (items[idx].labelLayer) map.removeLayer(items[idx].labelLayer);
+        items.splice(idx, 1);
+      }
+    });
+    allStationIds.clear();
+    allStationsActive = false;
+    btn.textContent = '+ Kaikki asemat';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    updateLayers();
+  } else {
+    if (!confirm(`Lisätään kaikki ${allStations.length} asemaa kartalle. Jatketaanko?`)) return;
+    const showLabel = document.getElementById('st-label-toggle').checked;
+    const sc = stColor, ss = +document.getElementById('st-size').value;
+    allStations.forEach(s => {
+      const id = 'allst_' + s.stationShortCode;
+      placeStation(s, sc, ss, showLabel, id);
+      allStationIds.add(id);
+    });
+    allStationsActive = true;
+    btn.textContent = '− Poista kaikki';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+    updateLayers();
+    map.flyToBounds([[59.5,19.0],[70.1,31.6]], { padding:[30,30], duration:1 });
+  }
+}
 
-/* 🎨 Väri */
-document.getElementById('colorPicker').addEventListener('input', e=>{
-  markerColor = e.target.value;
-  updateSizes();
-});
+// ---- DRAW ----
+let mode='select', drawColor='#f77f00', lineWeight=3, lineOpacity=0.7;
+let linePoints=[], areaPoints=[], tempLine=null, tempArea=null;
+let pendingLabel=false, labelText='', items=[];
 
-map.on('zoomend', updateSizes);
+makeSwatches('draw-colors', drawColor, c => { drawColor=c; });
 
+function setMode(m) {
+  finishLine(); finishArea(); pendingLabel=false;
+  mode=m;
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+m)?.classList.add('active');
+  document.getElementById('label-section').style.display = m==='label'?'block':'none';
+  const labels={select:'Valinta / Siirto',line:'Piirrä viiva – klikkaa pisteitä, tuplaklikkaa lopettaaksesi',area:'Piirrä alue – klikkaa pisteitä, tuplaklikkaa lopettaaksesi',label:'Kirjoita teksti ja paina +'};
+  document.getElementById('status-mode').textContent = labels[m]||m;
+  map.getContainer().style.cursor = m==='select'?'':'crosshair';
+}
+setMode('select');
+
+map.on('click', e => { if(mode==='line') addLinePoint(e.latlng); else if(mode==='area') addAreaPoint(e.latlng); else if(mode==='label'&&pendingLabel) placeLabelAt(e.latlng); });
+map.on('dblclick', e => { L.DomEvent.stop(e); if(mode==='line') finishLine(); else if(mode==='area') finishArea(); });
+
+function addLinePoint(ll) { linePoints.push(ll); if(tempLine) map.removeLayer(tempLine); if(linePoints.length>1) tempLine=L.polyline(linePoints,{color:drawColor,weight:lineWeight,opacity:lineOpacity,dashArray:'6 4'}).addTo(map); }
+function finishLine() {
+  if(linePoints.length<2){linePoints=[];if(tempLine){map.removeLayer(tempLine);tempLine=null;}return;}
+  if(tempLine) map.removeLayer(tempLine);
+  const poly=L.polyline(linePoints,{color:drawColor,weight:lineWeight,opacity:lineOpacity}).addTo(map);
+  const name=prompt('Viivan nimi (voit jättää tyhjäksi):')||'Viiva';
+  poly.bindTooltip(name,{sticky:true});
+  items.push({id:'line_'+Date.now(),type:'line',layer:poly,name,color:drawColor});
+  updateLayers(); linePoints=[]; tempLine=null;
+}
+
+function addAreaPoint(ll) { areaPoints.push(ll); if(tempArea) map.removeLayer(tempArea); if(areaPoints.length>1) tempArea=L.polygon(areaPoints,{color:drawColor,weight:2,fillColor:drawColor,fillOpacity:lineOpacity*0.4,dashArray:'5 4'}).addTo(map); }
+function finishArea() {
+  if(areaPoints.length<3){areaPoints=[];if(tempArea){map.removeLayer(tempArea);tempArea=null;}return;}
+  if(tempArea) map.removeLayer(tempArea);
+  const poly=L.polygon(areaPoints,{color:drawColor,weight:2,fillColor:drawColor,fillOpacity:lineOpacity*0.4}).addTo(map);
+  const name=prompt('Alueen nimi (voit jättää tyhjäksi):')||'Alue';
+  poly.bindTooltip(name,{sticky:true});
+  items.push({id:'area_'+Date.now(),type:'area',layer:poly,name,color:drawColor});
+  updateLayers(); areaPoints=[]; tempArea=null;
+}
+
+function addLabelMode() {
+  labelText=document.getElementById('label-input').value.trim(); if(!labelText) return;
+  pendingLabel=true; document.getElementById('status-mode').textContent='Klikkaa karttaa tekstin sijoituspaikaksi';
+}
+function placeLabelAt(ll) {
+  const marker=L.marker(ll,{icon:L.divIcon({className:'',html:`<div style="background:${drawColor};color:#0f1923;padding:3px 9px;border-radius:4px;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${labelText}</div>`,iconAnchor:[0,0]})}).addTo(map);
+  items.push({id:'label_'+Date.now(),type:'label',layer:marker,name:labelText,color:drawColor});
+  updateLayers(); pendingLabel=false; document.getElementById('label-input').value='';
+}
+
+// ---- LAYERS ----
+const typeIcons={station:'●',line:'━',area:'▲',label:'T'};
+
+function updateLayers() {
+  const list=document.getElementById('layers-list');
+  document.getElementById('layer-count').textContent=items.length;
+  if(!items.length){list.innerHTML='<div class="info-text">Ei merkintöjä vielä.</div>';return;}
+  list.innerHTML='';
+  [...items].reverse().forEach(item=>{
+    const div=document.createElement('div'); div.className='layer-item';
+    const dotWrap=document.createElement('div'); dotWrap.className='layer-dot'; dotWrap.style.background=item.color; dotWrap.title='Vaihda väriä';
+    const picker=document.createElement('input'); picker.type='color'; picker.value=item.color.startsWith('#')?item.color:'#cccccc';
+    picker.oninput=e=>{
+      item.color=e.target.value; dotWrap.style.background=e.target.value;
+      try {
+        if(item.type==='station') item.layer.setStyle({fillColor:e.target.value});
+        else if(item.type==='line') item.layer.setStyle({color:e.target.value});
+        else if(item.type==='area'){
+          item.layer.setStyle({color:e.target.value,fillColor:e.target.value});
+          if(item.presetKey){areaColors[item.presetKey]=e.target.value;const ad=document.getElementById('areaDot-'+item.presetKey);if(ad) ad.style.background=e.target.value;}
+        }
+      }catch(err){}
+    };
+    picker.onclick=e=>e.stopPropagation();
+    dotWrap.appendChild(picker);
+    const nm=document.createElement('span'); nm.className='layer-name'; nm.title=item.name; nm.textContent=(typeIcons[item.type]||'●')+' '+item.name;
+    const del=document.createElement('button'); del.className='del-btn'; del.title='Poista'; del.textContent='✕';
+    del.onclick=e=>{e.stopPropagation();removeItem(item.id);};
+    div.appendChild(dotWrap); div.appendChild(nm); div.appendChild(del);
+    div.onclick=()=>{try{if(item.layer.getBounds) map.fitBounds(item.layer.getBounds(),{padding:[50,50]});else if(item.layer.getLatLng) map.setView(item.layer.getLatLng(),Math.max(map.getZoom(),10));}catch(e){}};
+    list.appendChild(div);
+  });
+}
+
+function removeItem(id) {
+  const item=items.find(i=>i.id===id);
+  if(item&&item.presetKey){
+    areaVisible[item.presetKey]=false; delete areaLayers[item.presetKey];
+    const row=document.getElementById('arearow-'+item.presetKey);
+    if(row){const cb=row.querySelector('input[type=checkbox]');if(cb) cb.checked=false;}
+  }
+  const idx=items.findIndex(i=>i.id===id); if(idx===-1) return;
+  map.removeLayer(items[idx].layer);
+  if(items[idx].labelLayer) map.removeLayer(items[idx].labelLayer);
+  items.splice(idx,1); updateLayers();
+}
+
+// ---- EXPORT ----
+function exportMap() {
+  const bar=document.getElementById('loading-bar'); bar.classList.add('active');
+  setTimeout(()=>{
+    html2canvas(document.getElementById('map'),{useCORS:true,allowTaint:true,scale:2})
+      .then(canvas=>{const a=document.createElement('a');a.download='rataverkkokartta.png';a.href=canvas.toDataURL('image/png');a.click();bar.classList.remove('active');})
+      .catch(()=>{bar.classList.remove('active');alert('Vienti epäonnistui. Kokeile Win+Shift+S tai Cmd+Shift+4.');});
+  },100);
+}
+
+buildAreaControls();
 loadStations();
+initFinlandMap();
 </script>
-
 </body>
 </html>
