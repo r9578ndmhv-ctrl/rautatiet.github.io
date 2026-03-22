@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INDUSTRY INTELLIGENCE MONITOR</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080b0f;
+  --s1: #0f1318;
+  --s2: #161b23;
+  --s3: #1e242f;
+  --border: #252c38;
+  --text: #cdd5e0;
+  --muted: #5a6478;
+  --dim: #3a4256;
+
+  /* Industry accent colors */
+  --forest: #4caf72;
+  --forest2: #2d7a4a;
+  --metal: #64a8d4;
+  --metal2: #3a6e9a;
+  --yara: #e8c84b;
+  --yara2: #a88c2a;
+
+  --up: #4be87a;
+  --down: #e84b4b;
+  --flat: #6b7280;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* Grid overlay */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 61px),
+    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 61px);
+}
+
+/* ─── HEADER ─────────────────────────────────────────── */
+#header {
+  position:sticky; top:0; z-index:200;
+  background:rgba(8,11,15,.96); backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+
+.hdr-top {
+  display:flex; align-items:center; gap:16px;
+  max-width:1400px; margin:0 auto;
+  padding:0 20px; height:56px;
+}
+
+.brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.brand-name {
+  font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:4px;
+  background:linear-gradient(135deg,#e8c84b,#64a8d4,#4caf72);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.brand-sub { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:2px; }
+
+.hdr-clock {
+  margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:12px;
+  color:var(--muted); display:flex; align-items:center; gap:12px;
+}
+.next-refresh { color:var(--dim); font-size:10px; }
+.live-dot { width:6px;height:6px;border-radius:50%;background:var(--up);animation:pulse-dot 2s infinite; flex-shrink:0; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+/* ─── TICKER BAR ─────────────────────────────────────── */
+#ticker-bar {
+  background:var(--s1); border-bottom:1px solid var(--border);
+  height:34px; display:flex; align-items:center; overflow:hidden;
+}
+.ticker-tag {
+  flex-shrink:0; background:var(--yara); color:#080b0f;
+  font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:2px;
+  padding:0 12px; height:100%; display:flex; align-items:center;
+}
+.ticker-scroll {
+  flex:1; overflow:hidden; position:relative;
+}
+.ticker-inner {
+  display:inline-block; white-space:nowrap;
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+  animation:scroll-ticker 60s linear infinite; padding-left:100%;
+}
+@keyframes scroll-ticker { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+
+/* ─── STOCK STRIP ────────────────────────────────────── */
+#stock-strip {
+  background:var(--s2); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:0; overflow-x:auto; scrollbar-width:none;
+}
+#stock-strip::-webkit-scrollbar { display:none; }
+
+.stock-item {
+  flex-shrink:0; padding:8px 18px; border-right:1px solid var(--border);
+  display:flex; flex-direction:column; gap:2px; min-width:130px;
+}
+.stock-ticker { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; }
+.stock-price { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--text); }
+.stock-change {
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  display:flex; align-items:center; gap:3px;
+}
+.stock-change.up { color:var(--up); }
+.stock-change.down { color:var(--down); }
+.stock-change.flat { color:var(--flat); }
+.stock-loading { color:var(--dim); font-size:10px; font-family:'IBM Plex Mono',monospace; }
+
+/* ─── TABS ───────────────────────────────────────────── */
+#tabs {
+  background:var(--s1); border-bottom:1px solid var(--border);
+  display:flex; max-width:100%; overflow-x:auto; scrollbar-width:none;
+  position:sticky; top:56px; z-index:100;
+}
+#tabs::-webkit-scrollbar { display:none; }
+
+.tab {
+  flex-shrink:0; padding:0 28px; height:48px;
+  display:flex; align-items:center; gap:10px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:1px;
+  color:var(--muted); cursor:pointer; border-bottom:2px solid transparent;
+  transition:all .2s; white-space:nowrap; border:none; background:none;
+}
+.tab:hover { color:var(--text); }
+.tab.active[data-tab="forest"] { color:var(--forest); border-bottom-color:var(--forest); }
+.tab.active[data-tab="metal"]  { color:var(--metal);  border-bottom-color:var(--metal); }
+.tab.active[data-tab="yara"]   { color:var(--yara);   border-bottom-color:var(--yara); }
+.tab.active[data-tab="rail"]   { color:#c084fc;        border-bottom-color:#c084fc; }
+
+.tab-icon { font-size:16px; }
+.tab-badge {
+  background:var(--s3); color:var(--muted);
+  font-size:9px; padding:2px 6px; border-radius:10px;
+  transition:all .2s;
+}
+.tab.active .tab-badge { background:rgba(255,255,255,.12); color:var(--text); }
+
+/* ─── MAIN ───────────────────────────────────────────── */
+main { max-width:1400px; margin:0 auto; padding:20px; position:relative; z-index:1; }
+
+/* ─── COMPANY PILLS ──────────────────────────────────── */
+.company-filter {
+  display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; align-items:center;
+}
+.company-pill {
+  padding:5px 14px; border-radius:20px; border:1px solid var(--border);
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.5px;
+  color:var(--muted); cursor:pointer; background:transparent; transition:all .2s;
+}
+.company-pill:hover { border-color:var(--text); color:var(--text); }
+.company-pill.active { border-color:currentColor; }
+.company-pill[data-industry="forest"].active { color:var(--forest); background:rgba(76,175,114,.1); border-color:var(--forest); }
+.company-pill[data-industry="metal"].active  { color:var(--metal);  background:rgba(100,168,212,.1); border-color:var(--metal); }
+.company-pill[data-industry="yara"].active   { color:var(--yara);   background:rgba(232,200,75,.1);  border-color:var(--yara); }
+.company-pill[data-industry="rail"].active   { color:#c084fc;       background:rgba(192,132,252,.1); border-color:#c084fc; }
+
+/* ─── STATUS ROW ─────────────────────────────────────── */
+.status-row {
+  display:flex; align-items:center; gap:12px; margin-bottom:16px;
+  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+}
+.status-indicator { display:flex; align-items:center; gap:6px; }
+.si-dot { width:6px;height:6px;border-radius:50%;background:var(--dim); }
+.si-dot.ok    { background:var(--up); }
+.si-dot.busy  { background:var(--yara); animation:pulse-dot 0.5s infinite; }
+.si-dot.error { background:var(--down); }
+.status-row .sep { color:var(--border); }
+
+/* ─── NEWS GRID ──────────────────────────────────────── */
+.section-header {
+  display:flex; align-items:baseline; gap:12px; margin-bottom:14px;
+  border-bottom:1px solid var(--border); padding-bottom:10px;
+}
+.section-title {
+  font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:3px;
+}
+.section-count { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); }
+.section-time  { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim); margin-left:auto; }
+
+.news-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:14px;
+  margin-bottom:28px;
+}
+
+.news-card {
+  background:var(--s1); border:1px solid var(--border); border-radius:6px;
+  padding:18px; cursor:pointer; transition:all .2s;
+  animation:fade-up .35s ease both;
+  position:relative; overflow:hidden;
+}
+.news-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+}
+.news-card[data-industry="forest"]::before { background:var(--forest); }
+.news-card[data-industry="metal"]::before  { background:var(--metal); }
+.news-card[data-industry="yara"]::before   { background:var(--yara); }
+.news-card[data-industry="rail"]::before   { background:#c084fc; }
+
+.news-card:hover { border-color:var(--dim); transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.5); }
+.news-card.featured { border-left:2px solid; grid-column:span 2; }
+.news-card.featured[data-industry="forest"] { border-left-color:var(--forest); }
+.news-card.featured[data-industry="metal"]  { border-left-color:var(--metal); }
+.news-card.featured[data-industry="yara"]   { border-left-color:var(--yara); }
+@media(max-width:700px) { .news-card.featured { grid-column:span 1; } }
+
+@keyframes fade-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+.card-meta {
+  display:flex; align-items:center; gap:8px;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  margin-bottom:10px;
+}
+.card-company {
+  padding:2px 8px; border-radius:3px; font-size:9px; letter-spacing:1px;
+  background:var(--s3); color:var(--text);
+}
+.card-date { color:var(--muted); margin-left:auto; }
+
+.card-title {
+  font-weight:600; font-size:14px; line-height:1.45;
+  color:var(--text); margin-bottom:10px;
+}
+.news-card.featured .card-title { font-size:17px; }
+
+.card-summary { font-size:12px; color:var(--muted); line-height:1.65; margin-bottom:14px; }
+
+.card-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  border-top:1px solid var(--border); padding-top:10px;
+  font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted);
+}
+.card-source { display:flex; align-items:center; gap:5px; }
+.src-dot { width:5px;height:5px;border-radius:50%; }
+[data-industry="forest"] .src-dot { background:var(--forest); }
+[data-industry="metal"]  .src-dot { background:var(--metal); }
+[data-industry="yara"]   .src-dot { background:var(--yara); }
+.card-link { color:inherit; text-decoration:none; opacity:.6; transition:opacity .2s; }
+.card-link:hover { opacity:1; }
+
+/* ─── LOADING SKELETON ───────────────────────────────── */
+.skeleton-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
+.skeleton-card {
+  background:var(--s1); border:1px solid var(--border); border-radius:6px;
+  padding:18px; animation:shimmer 1.5s infinite;
+}
+.skel-line {
+  background:var(--s3); border-radius:3px; margin-bottom:8px;
+}
+@keyframes shimmer {
+  0%,100%{opacity:.5} 50%{opacity:1}
+}
+
+/* ─── EMPTY / ERROR ──────────────────────────────────── */
+.panel-msg {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:60px 20px; gap:12px; text-align:center;
+}
+.panel-msg .icon { font-size:40px; opacity:.3; }
+.panel-msg .msg  { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); letter-spacing:1px; }
+
+/* ─── PANEL SECTIONS ─────────────────────────────────── */
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────── */
+@media(max-width:600px) {
+  .hdr-top { padding:0 12px; }
+  main { padding:12px; }
+  .tab { padding:0 16px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<div id="header">
+  <div class="hdr-top">
+    <div class="brand">
+      <div>
+        <div class="brand-name">INDUSTRY INTELLIGENCE</div>
+        <div class="brand-sub">REAL-TIME NEWS MONITOR · AI-POWERED</div>
+      </div>
+    </div>
+    <div class="hdr-clock">
+      <div class="live-dot"></div>
+      <span id="clock">--:--:--</span>
+      <span class="sep">·</span>
+      <span class="next-refresh" id="next-refresh-label">Seuraava päivitys: --</span>
+    </div>
+  </div>
+
+  <!-- Ticker -->
+  <div id="ticker-bar">
+    <div class="ticker-tag">LIVE</div>
+    <div class="ticker-scroll">
+      <div class="ticker-inner" id="ticker-inner">Odottaa uutisia...</div>
+    </div>
+  </div>
+
+  <!-- Stock strip -->
+  <div id="stock-strip">
+    <div class="stock-loading" style="padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">Haetaan kurssitietoja...</div>
+  </div>
+</div>
+
+<!-- ─── TABS ─── -->
+<div id="tabs">
+  <button class="tab active" data-tab="forest">
+    <span class="tab-icon">🌲</span> METSÄTEOLLISUUS
+    <span class="tab-badge" id="badge-forest">–</span>
+  </button>
+  <button class="tab" data-tab="metal">
+    <span class="tab-icon">⚙️</span> METALLITEOLLISUUS
+    <span class="tab-badge" id="badge-metal">–</span>
+  </button>
+  <button class="tab" data-tab="yara">
+    <span class="tab-icon">🌾</span> YARA
+    <span class="tab-badge" id="badge-yara">–</span>
+  </button>
+  <button class="tab" data-tab="rail">
+    <span class="tab-icon">🚂</span> RAUTATIE & LOGISTIIKKA
+    <span class="tab-badge" id="badge-rail">–</span>
+  </button>
+</div>
+
+<!-- ─── MAIN ─── -->
+<main>
+
+  <!-- FOREST PANEL -->
+  <div class="tab-panel active" id="panel-forest">
+    <div class="company-filter" id="filter-forest">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">YHTIÖ:</span>
+      <button class="company-pill active" data-industry="forest" data-company="all">KAIKKI</button>
+      <button class="company-pill" data-industry="forest" data-company="Stora Enso">STORA ENSO</button>
+      <button class="company-pill" data-industry="forest" data-company="UPM">UPM</button>
+      <button class="company-pill" data-industry="forest" data-company="Metsä Group">METSÄ GROUP</button>
+      <button class="company-pill" data-industry="forest" data-company="Metsä Board">METSÄ BOARD</button>
+      <button class="company-pill" data-industry="forest" data-company="Metsäliitto">METSÄLIITTO</button>
+      <button class="company-pill" data-industry="forest" data-company="Koskisen">KOSKISEN</button>
+      <button class="company-pill" data-industry="forest" data-company="Sappi">SAPPI</button>
+      <button class="company-pill" data-industry="forest" data-company="Billerud">BILLERUD</button>
+    </div>
+    <div class="status-row" id="status-forest">
+      <div class="status-indicator"><div class="si-dot" id="dot-forest"></div><span id="status-text-forest">Odottaa...</span></div>
+    </div>
+    <div id="content-forest"><div class="panel-msg"><div class="icon">🌲</div><div class="msg">LADATAAN...</div></div></div>
+  </div>
+
+  <!-- METAL PANEL -->
+  <div class="tab-panel" id="panel-metal">
+    <div class="company-filter" id="filter-metal">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">YHTIÖ:</span>
+      <button class="company-pill active" data-industry="metal" data-company="all">KAIKKI</button>
+      <button class="company-pill" data-industry="metal" data-company="SSAB">SSAB</button>
+      <button class="company-pill" data-industry="metal" data-company="Outokumpu">OUTOKUMPU</button>
+      <button class="company-pill" data-industry="metal" data-company="Metso">METSO</button>
+      <button class="company-pill" data-industry="metal" data-company="Wärtsilä">WÄRTSILÄ</button>
+      <button class="company-pill" data-industry="metal" data-company="Kone">KONE</button>
+      <button class="company-pill" data-industry="metal" data-company="Rautaruukki">RAUTARUUKKI</button>
+    </div>
+    <div class="status-row" id="status-metal">
+      <div class="status-indicator"><div class="si-dot" id="dot-metal"></div><span id="status-text-metal">Odottaa...</span></div>
+    </div>
+    <div id="content-metal"><div class="panel-msg"><div class="icon">⚙️</div><div class="msg">LADATAAN...</div></div></div>
+  </div>
+
+  <!-- YARA PANEL -->
+  <div class="tab-panel" id="panel-yara">
+    <div class="status-row" id="status-yara">
+      <div class="status-indicator"><div class="si-dot" id="dot-yara"></div><span id="status-text-yara">Odottaa...</span></div>
+    </div>
+    <div id="content-yara"><div class="panel-msg"><div class="icon">🌾</div><div class="msg">LADATAAN...</div></div></div>
+  </div>
+
+  <!-- RAIL PANEL -->
+  <div class="tab-panel" id="panel-rail">
+    <div class="status-row" id="status-rail">
+      <div class="status-indicator"><div class="si-dot" id="dot-rail"></div><span id="status-text-rail">Odottaa...</span></div>
+    </div>
+    <div id="content-rail"><div class="panel-msg"><div class="icon">🚂</div><div class="msg">LADATAAN...</div></div></div>
+  </div>
+
+</main>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────
+const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const STOCK_REFRESH_MS    = 15 * 60 * 1000;  // 15 min
+
+// Pörssilistatut yhtiöt ja niiden ticker-symbolit
+const STOCKS = [
+  { name:'Stora Enso', sym:'STERV.HE',  industry:'forest' },
+  { name:'UPM',        sym:'UPM.HE',    industry:'forest' },
+  { name:'Metsä Board',sym:'METSB.HE',  industry:'forest' },
+  { name:'SSAB A',     sym:'SSAB-A.ST', industry:'metal'  },
+  { name:'Outokumpu',  sym:'OUT1V.HE',  industry:'metal'  },
+  { name:'Metso',      sym:'METSO.HE',  industry:'metal'  },
+  { name:'Wärtsilä',   sym:'WRT1V.HE',  industry:'metal'  },
+  { name:'Kone',       sym:'KNEBV.HE',  industry:'metal'  },
+  { name:'Yara',       sym:'YAR.OL',    industry:'yara'   },
+];
+
+// News query configs per industry
+const INDUSTRY_CONFIG = {
+  forest: {
+    label:'Metsäteollisuus', color:'var(--forest)',
+    query:'Stora Enso UPM "Metsä Group" "Metsä Board" Metsäliitto Koskisen Sappi Billerud metsäteollisuus uutiset news 2025',
+    companies:['Stora Enso','UPM','Metsä Group','Metsä Board','Metsäliitto','Koskisen','Sappi','Billerud'],
+    system:`Olet metsäteollisuuden uutisasiantuntija. Hae tuoreimmat uutiset näistä yhtiöistä: Stora Enso, UPM, Metsä Group, Metsä Board, Metsäliitto, Koskisen, Sappi, Billerud. 
+Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (yrityksen nimi), date, featured (boolean, max 2).`
+  },
+  metal: {
+    label:'Metalliteollisuus', color:'var(--metal)',
+    query:'SSAB Outokumpu Metso Wärtsilä Kone metalliteollisuus steel metal news 2025',
+    companies:['SSAB','Outokumpu','Metso','Wärtsilä','Kone','Rautaruukki'],
+    system:`Olet metalliteollisuuden uutisasiantuntija. Hae tuoreimmat uutiset näistä yhtiöistä: SSAB, Outokumpu, Metso, Wärtsilä, Kone, Rautaruukki.
+Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (yrityksen nimi), date, featured (boolean, max 2).`
+  },
+  yara: {
+    label:'Yara', color:'var(--yara)',
+    query:'Yara International fertilizer lannoite uutiset news 2025',
+    companies:['Yara'],
+    system:`Olet Yara International -yhtiön uutisasiantuntija. Hae tuoreimmat uutiset Yarasta: tulokset, strategia, lannoitemarkkinat, kestävyys, investoinnit.
+Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company ("Yara"), date, featured (boolean, max 2).`
+  },
+  rail: {
+    label:'Rautatie & Logistiikka', color:'#c084fc',
+    query:'rautatie logistiikka railway logistics VR freight Finland Europe news 2025',
+    companies:[],
+    system:`Olet rautatie- ja logistiikkauutisten asiantuntija. Hae tuoreimmat uutiset rautatiekuljetuksista, logistiikasta, rahtiliikenteestä ja infrastruktuurista.
+Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (organisaatio tai ""), date, featured (boolean, max 2).`
+  }
+};
+
+// ─── STATE ────────────────────────────────────────────────────
+const state = {
+  articles: { forest:[], metal:[], yara:[], rail:[] },
+  lastFetch: { forest:0, metal:0, yara:0, rail:0 },
+  activeTab: 'forest',
+  companyFilter: { forest:'all', metal:'all' },
+};
+
+let refreshTimer = null;
+let stockTimer   = null;
+let countdownSec = REFRESH_INTERVAL_MS / 1000;
+
+// ─── CLOCK ────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('fi-FI', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  countdownSec = Math.max(0, Math.round((REFRESH_INTERVAL_MS - (Date.now() - Math.min(...Object.values(state.lastFetch).filter(t=>t>0), Date.now()))) / 1000));
+  const m = Math.floor(countdownSec / 60), s = countdownSec % 60;
+  document.getElementById('next-refresh-label').textContent =
+    `Seuraava päivitys: ${m}:${String(s).padStart(2,'0')}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── TABS ─────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    state.activeTab = tab.dataset.tab;
+    document.getElementById('panel-'+state.activeTab).classList.add('active');
+  });
+});
+
+// ─── COMPANY FILTER ───────────────────────────────────────────
+document.querySelectorAll('.company-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const industry = pill.dataset.industry;
+    document.querySelectorAll(`.company-pill[data-industry="${industry}"]`).forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    state.companyFilter[industry] = pill.dataset.company;
+    renderArticles(industry);
+  });
+});
+
+// ─── FETCH NEWS ───────────────────────────────────────────────
+async function fetchIndustry(industry) {
+  const cfg = INDUSTRY_CONFIG[industry];
+  setStatus(industry, 'busy', 'Haetaan uutisia...');
+  showSkeleton(industry);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        system: cfg.system,
+        messages:[{role:'user', content:`Hae 10-14 tuoreinta uutista. Hakusanat: ${cfg.query}. Palauta VAIN JSON-taulukko.`}]
+      })
+    });
+
+    const data = await res.json();
+    let raw = '';
+    if (data.content) data.content.forEach(b => { if(b.type==='text') raw += b.text; });
+
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('Ei JSON-vastausta');
+
+    let articles = JSON.parse(match[0]);
+    // Inject industry field
+    articles = articles.map(a => ({...a, industry}));
+
+    state.articles[industry] = articles;
+    state.lastFetch[industry] = Date.now();
+    document.getElementById(`badge-${industry}`).textContent = articles.length;
+
+    setStatus(industry, 'ok', `${articles.length} uutista · ${new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`);
+    renderArticles(industry);
+    updateTicker();
+
+  } catch(err) {
+    console.error(industry, err);
+    setStatus(industry, 'error', 'Hakuvirhe: ' + err.message);
+    document.getElementById('content-'+industry).innerHTML =
+      `<div class="panel-msg"><div class="icon">⚠️</div><div class="msg">${err.message}</div></div>`;
+  }
+}
+
+function fetchAll() {
+  ['forest','metal','yara','rail'].forEach(ind => fetchIndustry(ind));
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function renderArticles(industry) {
+  const container = document.getElementById('content-'+industry);
+  let articles = state.articles[industry] || [];
+
+  // Company filter
+  const filter = state.companyFilter[industry];
+  if (filter && filter !== 'all') {
+    articles = articles.filter(a => (a.company||'').toLowerCase().includes(filter.toLowerCase()));
+  }
+
+  if (!articles.length) {
+    container.innerHTML = `<div class="panel-msg"><div class="icon">📭</div><div class="msg">EI UUTISIA</div></div>`;
+    return;
+  }
+
+  const cfg = INDUSTRY_CONFIG[industry];
+  const grid = document.createElement('div');
+  grid.className = 'news-grid';
+
+  articles.forEach((a, i) => {
+    const card = document.createElement('div');
+    card.className = 'news-card' + (a.featured ? ' featured' : '');
+    card.dataset.industry = industry;
+    card.style.animationDelay = (i * 0.05) + 's';
+
+    card.innerHTML = `
+      <div class="card-meta">
+        <span class="card-company">${esc(a.company||'')}</span>
+        <span class="card-date">${esc(a.date||'')}</span>
+      </div>
+      <div class="card-title">${esc(a.title)}</div>
+      <div class="card-summary">${esc(a.summary||'')}</div>
+      <div class="card-footer">
+        <div class="card-source">
+          <div class="src-dot"></div>
+          <span>${esc(a.source||'')}</span>
+        </div>
+        ${a.url ? `<a class="card-link" href="${esc(a.url)}" target="_blank" rel="noopener">LUE →</a>` : ''}
+      </div>`;
+
+    if (a.url) card.addEventListener('click', e => { if(e.target.tagName!=='A') window.open(a.url,'_blank'); });
+    grid.appendChild(card);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+// ─── SKELETON ─────────────────────────────────────────────────
+function showSkeleton(industry) {
+  const container = document.getElementById('content-'+industry);
+  container.innerHTML = `<div class="skeleton-grid">${Array(6).fill(0).map((_,i) => `
+    <div class="skeleton-card" style="animation-delay:${i*0.1}s">
+      <div class="skel-line" style="width:30%;height:10px;margin-bottom:14px"></div>
+      <div class="skel-line" style="width:90%;height:14px"></div>
+      <div class="skel-line" style="width:75%;height:14px"></div>
+      <div class="skel-line" style="width:60%;height:14px;margin-top:10px"></div>
+      <div class="skel-line" style="width:85%;height:11px"></div>
+      <div class="skel-line" style="width:40%;height:11px;margin-top:14px"></div>
+    </div>`).join('')}</div>`;
+}
+
+// ─── STATUS ───────────────────────────────────────────────────
+function setStatus(industry, state, text) {
+  const dot = document.getElementById('dot-'+industry);
+  const label = document.getElementById('status-text-'+industry);
+  dot.className = 'si-dot ' + state;
+  label.textContent = text;
+}
+
+// ─── TICKER ───────────────────────────────────────────────────
+function updateTicker() {
+  const all = [...Object.values(state.articles)].flat();
+  if (!all.length) return;
+  document.getElementById('ticker-inner').textContent =
+    all.map(a => `⬥ ${a.company ? '['+a.company+'] ' : ''}${a.title}`).join('    ');
+}
+
+// ─── STOCKS ───────────────────────────────────────────────────
+async function fetchStocks() {
+  const strip = document.getElementById('stock-strip');
+  strip.innerHTML = '';
+
+  // Use Claude to get stock prices via web search
+  try {
+    const symbols = STOCKS.map(s => s.sym).join(', ');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1500,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        system:`Hae osakekurssit. Palauta VAIN JSON-taulukko, ei muuta tekstiä.
+Jokainen objekti: { sym, name, price, change, changePct, currency }
+price = viimeisin kurssi numeroina, change = muutos numeroina (+ tai -), changePct = muutosprosentti numeroina.`,
+        messages:[{role:'user', content:`Hae nykyiset osakekurssit näille: ${STOCKS.map(s=>s.name+' ('+s.sym+')').join(', ')}. VAIN JSON.`}]
+      })
+    });
+
+    const data = await res.json();
+    let raw = '';
+    if (data.content) data.content.forEach(b => { if(b.type==='text') raw += b.text; });
+    const match = raw.match(/\[[\s\S]*?\]/);
+    if (!match) throw new Error('no json');
+
+    const prices = JSON.parse(match[0]);
+    strip.innerHTML = '';
+
+    prices.forEach(p => {
+      const chg = parseFloat(p.changePct) || 0;
+      const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
+      const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '—';
+      const div = document.createElement('div');
+      div.className = 'stock-item';
+      div.innerHTML = `
+        <div class="stock-ticker">${esc(p.sym||p.name)}</div>
+        <div class="stock-price">${parseFloat(p.price).toFixed(2)} ${p.currency||'€'}</div>
+        <div class="stock-change ${cls}">${arrow} ${Math.abs(chg).toFixed(2)}%</div>`;
+      strip.appendChild(div);
+    });
+
+  } catch(err) {
+    // Fallback: show static placeholders
+    strip.innerHTML = STOCKS.map(s =>
+      `<div class="stock-item">
+        <div class="stock-ticker">${s.sym}</div>
+        <div class="stock-price" style="color:var(--dim)">–</div>
+        <div class="stock-change flat">Ei dataa</div>
+      </div>`
+    ).join('');
+  }
+}
+
+// ─── AUTO REFRESH ─────────────────────────────────────────────
+function scheduleRefresh() {
+  clearInterval(refreshTimer);
+  clearInterval(stockTimer);
+  refreshTimer = setInterval(fetchAll, REFRESH_INTERVAL_MS);
+  stockTimer   = setInterval(fetchStocks, STOCK_REFRESH_MS);
+}
+
+// ─── UTILS ────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+fetchAll();
+fetchStocks();
+scheduleRefresh();
+</script>
+</body>
+</html>
