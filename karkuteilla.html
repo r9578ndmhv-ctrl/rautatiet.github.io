@@ -49,8 +49,8 @@ canvas{display:block;image-rendering:pixelated;}
 .wanted{font-size:13px;color:var(--yellow);border:2px solid var(--yellow);padding:6px 14px;box-shadow:0 0 12px var(--yellow);letter-spacing:3px;}
 
 /* DPAD */
-#dpad{flex-shrink:0;display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(3,60px);gap:5px;padding:8px 0 max(8px,env(safe-area-inset-bottom));}
-.db{background:rgba(255,255,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(0,212,255,.5);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none;}
+#dpad{flex-shrink:0;display:flex;flex-direction:row;justify-content:center;align-items:center;gap:8px;padding:10px 16px max(10px,env(safe-area-inset-bottom));width:100%;}
+.db{background:rgba(255,255,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(0,212,255,.5);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none;flex:1;height:58px;max-width:90px;}
 .db:active,.db.pr{background:rgba(233,69,96,.2);border-color:var(--accent);color:var(--accent);}
 #sh{font-size:10px;color:#333;margin-bottom:1px;letter-spacing:1px;font-family:'Rajdhani',sans-serif;}
 
@@ -191,11 +191,10 @@ canvas{display:block;image-rendering:pixelated;}
   </div>
   <div id="sh">AJA KAASUA · VÄLTÄ POLIISIA · KERÄÄ BONUKSET</div>
   <div id="dpad">
-    <div></div><div class="db" id="bu">▲</div><div></div>
+    <div class="db" id="bu">▲</div>
     <div class="db" id="bl">◀</div>
-    <div></div>
     <div class="db" id="br">▶</div>
-    <div></div><div class="db" id="bd">▼</div><div></div>
+    <div class="db" id="bd">▼</div>
   </div>
 </div>
 
@@ -493,7 +492,7 @@ function resize(){
     dpad.style.display='none';
     sh.style.display='none';
   } else {
-    dpad.style.display='grid';
+    dpad.style.display='flex';
     sh.style.display='block';
   }
   const cw=document.getElementById('cw');
