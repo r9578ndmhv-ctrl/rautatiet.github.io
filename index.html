@@ -71,9 +71,6 @@
   .appear-label { font-size: 0.68rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; }
 
   .btn-row { display: flex; gap: 5px; margin-top: 5px; }
-  .add-btn { flex: 1; padding: 8px; background: var(--accent); border: none; border-radius: 6px; color: #0f1923; font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: opacity 0.15s; }
-  .add-btn:hover { opacity: 0.85; }
-  .add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .add-all-btn { padding: 8px 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-family: 'Raleway', sans-serif; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .add-all-btn:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -237,11 +234,11 @@
         </div>
         <div class="ctrl-row">
           <label>Koko</label>
-          <input type="range" id="st-size" min="3" max="22" value="8" oninput="document.getElementById('st-size-val').textContent=this.value">
+          <input type="range" id="st-size" min="3" max="22" value="8" oninput="document.getElementById('st-size-val').textContent=this.value; updateAllStations()">
           <span class="val" id="st-size-val">8</span>
         </div>
         <div class="toggle-row">
-          <label class="toggle"><input type="checkbox" id="st-label-toggle" checked><span class="toggle-slider"></span></label>
+          <label class="toggle"><input type="checkbox" id="st-label-toggle" checked onchange="updateAllStations()"><span class="toggle-slider"></span></label>
           <span>Näytä nimiselite</span>
         </div>
         <div id="label-style-block">
@@ -251,12 +248,12 @@
           </div>
           <div class="ctrl-row">
             <label>Fonttikoko</label>
-            <input type="range" id="label-fontsize" min="8" max="24" value="12" oninput="document.getElementById('label-fontsize-val').textContent=this.value+'px'">
+            <input type="range" id="label-fontsize" min="8" max="24" value="12" oninput="document.getElementById('label-fontsize-val').textContent=this.value+'px'; updateAllStations()">
             <span class="val" id="label-fontsize-val">12px</span>
           </div>
           <div class="ctrl-row">
             <label>Fonttityyli</label>
-            <select id="label-font" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:0.78rem;outline:none;">
+            <select id="label-font" onchange="updateAllStations()" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:0.78rem;outline:none;">
               <option value="'Source Sans 3',sans-serif">Source Sans 3</option>
               <option value="Arial,sans-serif">Arial</option>
               <option value="'Times New Roman',serif">Times New Roman</option>
@@ -267,8 +264,7 @@
         </div>
       </div>
       <div class="btn-row">
-        <button class="add-btn" id="add-btn" onclick="addSelectedStations()" disabled>Lisää valitut</button>
-        <button class="add-all-btn" id="add-all-btn" onclick="addAllStations()">+ Kaikki asemat</button>
+        <button class="add-all-btn" id="add-all-btn" onclick="addAllStations()" style="width:100%">+ Kaikki asemat</button>
       </div>
 
     </div>
@@ -768,12 +764,33 @@ function renderDropdown(q) {
 }
 
 function toggleStation(code) {
-  if (selectedCodes.has(code)) selectedCodes.delete(code); else selectedCodes.add(code);
-  updateTags(); renderDropdown(document.getElementById('station-search').value.toLowerCase().trim());
+  if (selectedCodes.has(code)) {
+    // Remove from selection and from map
+    selectedCodes.delete(code);
+    const idx = items.findIndex(i => i.id === 'st_instant_' + code);
+    if (idx !== -1) {
+      map.removeLayer(items[idx].layer);
+      if (items[idx].labelLayer) map.removeLayer(items[idx].labelLayer);
+      items.splice(idx, 1);
+      updateLayers();
+    }
+  } else {
+    // Add to selection and immediately place on map
+    selectedCodes.add(code);
+    const s = allStations.find(x => x.stationShortCode === code);
+    if (s) {
+      const showLabel = document.getElementById('st-label-toggle').checked;
+      const sc = stColor, ss = +document.getElementById('st-size').value;
+      placeStation(s, sc, ss, showLabel, 'st_instant_' + code);
+      updateLayers();
+      map.flyTo([s.latitude, s.longitude], Math.max(map.getZoom(), 10), { duration: 0.8 });
+    }
+  }
+  updateTags();
+  renderDropdown(document.getElementById('station-search').value.toLowerCase().trim());
 }
 
 function updateTags() {
-  document.getElementById('add-btn').disabled = selectedCodes.size === 0;
   const cont = document.getElementById('selected-tags');
   if (!selectedCodes.size) { cont.innerHTML=''; return; }
   cont.innerHTML = [...selectedCodes].map(code => {
@@ -784,8 +801,8 @@ function updateTags() {
 
 let stColor = '#00b4d8';
 let labelTextColor = '#1a1a2e';
-makeSwatches('st-colors', stColor, c => { stColor = c; });
-makeSwatches('label-colors', labelTextColor, c => { labelTextColor = c; });
+makeSwatches('st-colors', stColor, c => { stColor = c; updateAllStations(); });
+makeSwatches('label-colors', labelTextColor, c => { labelTextColor = c; updateAllStations(); });
 
 let txtLabelColor = '#1a1a2e';
 // txt-label-colors initialized when label section becomes visible
@@ -801,6 +818,40 @@ function getLabelStyle() {
     fontSize: document.getElementById('label-fontsize')?.value || '12',
     font: document.getElementById('label-font')?.value || "'Source Sans 3',sans-serif"
   };
+}
+
+// Update all placed stations to match current style settings
+function updateAllStations() {
+  const ss = +document.getElementById('st-size').value;
+  const showLabel = document.getElementById('st-label-toggle').checked;
+  const ls = getLabelStyle();
+
+  items.filter(i => i.type === 'station').forEach(item => {
+    // Update circle color and size
+    item.layer.setStyle({ fillColor: stColor });
+    item.layer.setRadius(ss);
+    item.color = stColor;
+
+    // Update label marker if exists
+    if (item.labelLayer) {
+      map.removeLayer(item.labelLayer);
+      item.labelLayer = null;
+    }
+    // Recreate label if toggle is on
+    if (showLabel) {
+      const latlng = item.layer.getLatLng();
+      const labelMarker = L.marker(latlng, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="st-label" style="color:${ls.color};font-size:${ls.fontSize}px;font-family:${ls.font};background:white;border:1.5px solid ${ls.color};padding:2px 6px;border-radius:3px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.15);line-height:1.5;display:inline-block">${item.name}</div>`,
+          iconAnchor: [-(ss + 5), parseInt(ls.fontSize)/2 + 2]
+        }),
+        interactive: false
+      }).addTo(map);
+      item.labelLayer = labelMarker;
+    }
+  });
+  updateLayers();
 }
 
 function placeStation(s, sc, ss, showLabel, customId) {
