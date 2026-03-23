@@ -312,6 +312,78 @@ function sndWin(){
   [1047,784,659,523].forEach((f,i)=>beep(f,.12,'sine',.18,.6+i*0.1));
 }
 
+// Synthesised pedestrian scream
+function sndPedScream(pedType){
+  if(!audioReady||!AC) return;
+  try{
+    const isChild = pedType==='boy'||pedType==='girl'||pedType==='child';
+    // Pitch: children scream higher
+    const basePitch = isChild ? 900 : 550;
+    const dur = 0.55;
+    const t = AC.currentTime;
+
+    // Main voice oscillator – FM synthesis for vocal quality
+    const carrier = AC.createOscillator();
+    const modulator = AC.createOscillator();
+    const modGain = AC.createGain();
+    const gainNode = AC.createGain();
+    const distortion = AC.createWaveShaper();
+
+    // Distortion curve for harsh vocal texture
+    const curve = new Float32Array(256);
+    for(let i=0;i<256;i++){
+      const x=i*2/256-1;
+      curve[i]=x*(Math.abs(x)*0.8+0.6);
+    }
+    distortion.curve=curve;
+
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    carrier.connect(distortion);
+    distortion.connect(gainNode);
+    gainNode.connect(AC.destination);
+
+    carrier.type='sawtooth';
+    modulator.type='sine';
+
+    // Scream pitch envelope: starts mid, rises sharply, then falls
+    carrier.frequency.setValueAtTime(basePitch*0.7, t);
+    carrier.frequency.linearRampToValueAtTime(basePitch*1.4, t+0.08);
+    carrier.frequency.linearRampToValueAtTime(basePitch*1.1, t+0.25);
+    carrier.frequency.linearRampToValueAtTime(basePitch*0.5, t+dur);
+
+    // Vibrato
+    modulator.frequency.setValueAtTime(6, t);
+    modulator.frequency.linearRampToValueAtTime(9, t+0.15);
+    modGain.gain.setValueAtTime(0, t);
+    modGain.gain.linearRampToValueAtTime(basePitch*0.12, t+0.06);
+    modGain.gain.linearRampToValueAtTime(basePitch*0.06, t+dur);
+
+    // Amplitude envelope: sharp attack, slow decay
+    gainNode.gain.setValueAtTime(0.001, t);
+    gainNode.gain.linearRampToValueAtTime(0.28, t+0.04);
+    gainNode.gain.exponentialRampToValueAtTime(0.12, t+0.2);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t+dur);
+
+    carrier.start(t); modulator.start(t);
+    carrier.stop(t+dur+0.05); modulator.stop(t+dur+0.05);
+
+    // Add a second harmonic layer for richness
+    const carrier2 = AC.createOscillator();
+    const gain2 = AC.createGain();
+    carrier2.connect(gain2); gain2.connect(AC.destination);
+    carrier2.type='square';
+    carrier2.frequency.setValueAtTime(basePitch*0.5, t);
+    carrier2.frequency.linearRampToValueAtTime(basePitch*0.75, t+0.08);
+    carrier2.frequency.linearRampToValueAtTime(basePitch*0.3, t+dur);
+    gain2.gain.setValueAtTime(0.001, t);
+    gain2.gain.linearRampToValueAtTime(0.08, t+0.05);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    carrier2.start(t); carrier2.stop(t+dur+0.05);
+
+  }catch(e){}
+}
+
 let wakaT=0, sirenT=0;
 let engineNode=null, engineGain=null;
 
@@ -377,6 +449,7 @@ let raf=null,lastT=0,floats=[];
 let swipe0=null;
 let boostHeld=0;
 let keyHeld=false;
+let displaySpd=0; // smoothed speedometer value
 let selectedChar='julia'; // 'julia' or 'jonas'
 
 // ─── TRANSLATIONS ─────────────────────────────────────────────
@@ -635,6 +708,7 @@ function beginLevel(){
   floats=[];tireMarks=[];
   const cfg=LVLS[Math.min(level-1,LVLS.length-1)];
   julia=makeJulia();
+  displaySpd=0;
   police=[];
   for(let i=0;i<cfg.ng;i++)police.push(makePolice(i,cfg));
   pedestrians=[];
@@ -704,9 +778,17 @@ function updateHUD(){
   if(julia){
     const boost=Math.min(boostHeld/1500,1.0);
     const baseSpd=LVLS[Math.min(level-1,LVLS.length-1)].ps;
-    const spd=Math.round((Math.abs(julia.dr)+Math.abs(julia.dc))*baseSpd*(1+boost)*60);
+    const rawSpd=(Math.abs(julia.dr)+Math.abs(julia.dc))*baseSpd*(1+boost)*60;
+    const maxSpd=selectedChar==='jonas'?70:160;
+    const targetSpd=julia.dr===0&&julia.dc===0?0:Math.min(rawSpd,maxSpd);
+    // Accelerate fast, decelerate a bit slower – feels like a real speedometer
+    const accel = targetSpd > displaySpd ? 4.5 : 3.0;
+    displaySpd += (targetSpd - displaySpd) * 0.05 * accel;
+    if(Math.abs(displaySpd - targetSpd) < 0.5) displaySpd = targetSpd;
+    const spd=Math.round(displaySpd);
     const bar='▓'.repeat(Math.round(boost*5))+'░'.repeat(5-Math.round(boost*5));
-    document.getElementById('speedo').textContent=`🚀 ${spd} km/h  ${bar}`;
+    const icon=selectedChar==='jonas'?'🏍️':'🚗';
+    document.getElementById('speedo').textContent=icon+' '+spd+' km/h  '+bar;
   }
 }
 
@@ -846,6 +928,7 @@ function doJuliaCaught(){
       stopEngine();overlay('go');gameState='gameover';
     } else {
       julia=makeJulia();
+      displaySpd=0;
       const cfg=LVLS[Math.min(level-1,LVLS.length-1)];
       police.forEach((p,i)=>{
         const homes=[{r:8,c:9},{r:8,c:8},{r:8,c:10},{r:7,c:9},{r:9,c:9},{r:7,c:8},{r:9,c:8}];
@@ -922,7 +1005,7 @@ function checkPedestrians(){
       floats.push({x:cv.width/2,y:cv.height/2,txt:warns[Math.floor(Math.random()*warns.length)],life:1.6,big:true,red:true});
       try{
         const ac=AC;
-        beep(880,.05,'square',.3); beep(660,.05,'square',.25,.07); beep(440,.1,'square',.2,.14);
+        sndPedScream(p.type);
       }catch(e){}
     }
   });
