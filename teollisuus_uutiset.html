@@ -4,863 +4,431 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>INDUSTRY INTELLIGENCE MONITOR</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f4f6f8;
-  --s1: #ffffff;
-  --s2: #eef1f5;
-  --s3: #e4e8ee;
-  --border: #d0d7e2;
-  --text: #1a2233;
-  --muted: #6b7a94;
-  --dim: #a0aab8;
+  --bg:#f4f6f9; --s1:#fff; --s2:#eef1f6; --s3:#e2e7f0; --border:#d0d8e8;
+  --text:#1a2235; --muted:#6b7a94; --dim:#a0aab8; --shadow:rgba(0,0,0,.08);
+  --forest:#1a7a40; --metal:#1560a0; --yara:#c08000; --rail:#7c3aed;
+  --up:#16a34a; --down:#dc2626; --flat:#9ca3af;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;}
 
-  /* Industry accent colors */
-  --forest: #1e8a4a;
-  --forest2: #145e32;
-  --metal: #1a6fa8;
-  --metal2: #0f4a72;
-  --yara: #b8860b;
-  --yara2: #8a6508;
+#header{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);box-shadow:0 1px 8px var(--shadow);}
+.hdr-main{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:0 20px;height:54px;}
+.brand-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;background:linear-gradient(135deg,var(--yara),var(--metal),var(--forest));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:2px;margin-top:1px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.hdr-clock{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+.live-chip{display:flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #bbf7d0;padding:3px 10px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--up);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--up);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.next-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);}
 
-  --up: #16a34a;
-  --down: #dc2626;
-  --flat: #6b7280;
-}
+#stock-strip{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--s2);display:flex;overflow-x:auto;scrollbar-width:none;}
+#stock-strip::-webkit-scrollbar{display:none;}
+.stock-item{flex-shrink:0;padding:7px 18px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:1px;min-width:120px;}
+.stk-sym{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;}
+.stk-name{font-size:10px;color:var(--text);font-weight:600;}
+.stk-price{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);}
+.stk-chg{font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.stk-chg.up{color:var(--up);}.stk-chg.down{color:var(--down);}.stk-chg.flat{color:var(--flat);}
+.stk-loading{padding:7px 16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);align-self:center;}
 
-* { box-sizing:border-box; margin:0; padding:0; }
-body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+#ticker-bar{background:var(--text);height:30px;display:flex;align-items:center;overflow:hidden;}
+.ticker-tag{flex-shrink:0;background:var(--yara);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;padding:0 12px;height:100%;display:flex;align-items:center;}
+.ticker-scroll{flex:1;overflow:hidden;}
+.ticker-inner{display:inline-block;white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9ca3af;animation:scroll-t 80s linear infinite;padding-left:100%;}
+@keyframes scroll-t{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 
-/* Grid overlay */
-body::before {
-  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-  background-image:
-    repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(0,0,0,.025) 60px,rgba(0,0,0,.025) 61px),
-    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(0,0,0,.025) 60px,rgba(0,0,0,.025) 61px);
-}
+#tabs{position:sticky;top:54px;z-index:100;background:var(--s1);border-bottom:2px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;}
+#tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:0 24px;height:46px;display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active[data-tab="forest"]{color:var(--forest);border-bottom-color:var(--forest);background:#f0fdf4;}
+.tab.active[data-tab="metal"] {color:var(--metal); border-bottom-color:var(--metal); background:#eff6ff;}
+.tab.active[data-tab="yara"]  {color:var(--yara);  border-bottom-color:var(--yara);  background:#fffbeb;}
+.tab.active[data-tab="rail"]  {color:var(--rail);  border-bottom-color:var(--rail);  background:#faf5ff;}
+.tab-badge{background:var(--s3);color:var(--muted);border-radius:10px;font-size:9px;padding:2px 6px;}
+.tab.active .tab-badge{color:var(--text);background:var(--s2);}
 
-/* ─── HEADER ─────────────────────────────────────────── */
-#header {
-  position:sticky; top:0; z-index:200;
-  background:rgba(244,246,248,.97); backdrop-filter:blur(16px); box-shadow:0 1px 0 var(--border);
-  border-bottom:1px solid var(--border);
-}
+main{max-width:1400px;margin:0 auto;padding:20px;}
+.company-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;align-items:center;}
+.cpill{padding:4px 13px;border-radius:16px;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.5px;color:var(--muted);cursor:pointer;background:var(--s1);transition:all .18s;}
+.cpill:hover{border-color:var(--text);color:var(--text);}
+.cpill.active[data-ind="forest"]{color:var(--forest);background:#f0fdf4;border-color:var(--forest);}
+.cpill.active[data-ind="metal"] {color:var(--metal); background:#eff6ff;border-color:var(--metal);}
+.cpill.active[data-ind="yara"]  {color:var(--yara);  background:#fffbeb;border-color:var(--yara);}
+.cpill.active[data-ind="rail"]  {color:var(--rail);  background:#faf5ff;border-color:var(--rail);}
+.cbar-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-right:4px;}
 
-.hdr-top {
-  display:flex; align-items:center; gap:16px;
-  max-width:1400px; margin:0 auto;
-  padding:0 20px; height:56px;
-}
+.status-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+.si{display:flex;align-items:center;gap:5px;}
+.si-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);}
+.si-dot.ok{background:var(--up);}.si-dot.busy{background:var(--yara);animation:blink .5s infinite;}.si-dot.err{background:var(--down);}
 
-.brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-.brand-name {
-  font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:4px;
-  background:linear-gradient(135deg,#b8860b,#1a6fa8,#1e8a4a);
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-}
-.brand-sub { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:2px; }
+.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:28px;}
+.news-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:18px;cursor:pointer;transition:all .18s;animation:fadeUp .3s ease both;position:relative;overflow:hidden;}
+.news-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.news-card[data-ind="forest"]::before{background:var(--forest);}
+.news-card[data-ind="metal"]::before {background:var(--metal);}
+.news-card[data-ind="yara"]::before  {background:var(--yara);}
+.news-card[data-ind="rail"]::before  {background:var(--rail);}
+.news-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px var(--shadow);border-color:var(--dim);}
+.news-card.featured{grid-column:span 2;}
+@media(max-width:680px){.news-card.featured{grid-column:span 1;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-/* API key bar */
-#apikey-bar {
-  background:#fff8e7; border-bottom:2px solid #e8b84b;
-  padding:10px 20px; display:flex; align-items:center; gap:12px;
-  font-family:'IBM Plex Mono',monospace; font-size:12px;
-}
-#apikey-bar.hidden { display:none; }
-#apikey-bar label { color:#7a6000; white-space:nowrap; font-weight:600; }
-#apikey-input {
-  flex:1; max-width:380px; padding:7px 12px;
-  border:1px solid #d4a800; border-radius:4px;
-  font-family:'IBM Plex Mono',monospace; font-size:12px;
-  background:#fffdf5; color:#1a1a1a; outline:none;
-}
-#apikey-input:focus { border-color:#b8860b; box-shadow:0 0 0 2px rgba(184,134,11,.15); }
-#apikey-save {
-  padding:7px 16px; background:#b8860b; color:#fff;
-  border:none; border-radius:4px; cursor:pointer;
-  font-family:'IBM Plex Mono',monospace; font-size:11px;
-  font-weight:600; letter-spacing:1px; transition:background .2s;
-}
-#apikey-save:hover { background:#9a700a; }
-#apikey-status { font-size:11px; color:#6b7280; }
-#apikey-clear { font-size:11px; color:#dc2626; cursor:pointer; text-decoration:underline; background:none; border:none; font-family:'IBM Plex Mono',monospace; }
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.card-co{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;font-weight:600;}
+.card-co[data-ind="forest"]{background:#dcfce7;color:var(--forest);}
+.card-co[data-ind="metal"] {background:#dbeafe;color:var(--metal);}
+.card-co[data-ind="yara"]  {background:#fef3c7;color:var(--yara);}
+.card-co[data-ind="rail"]  {background:#ede9fe;color:var(--rail);}
+.card-date{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);margin-left:auto;}
+.card-title{font-weight:600;font-size:14px;line-height:1.45;color:var(--text);margin-bottom:8px;}
+.news-card.featured .card-title{font-size:16px;}
+.card-desc{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.card-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);}
+.card-src{display:flex;align-items:center;gap:5px;}
+.src-dot{width:5px;height:5px;border-radius:50%;}
+.src-dot[data-ind="forest"]{background:var(--forest);}
+.src-dot[data-ind="metal"] {background:var(--metal);}
+.src-dot[data-ind="yara"]  {background:var(--yara);}
+.src-dot[data-ind="rail"]  {background:var(--rail);}
+a.read-more{color:var(--metal);text-decoration:none;font-size:10px;}
+a.read-more:hover{text-decoration:underline;}
 
-.hdr-clock {
-  margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:12px;
-  color:var(--muted); display:flex; align-items:center; gap:12px;
-}
-.next-refresh { color:var(--dim); font-size:10px; }
-.live-dot { width:6px;height:6px;border-radius:50%;background:var(--up);animation:pulse-dot 2s infinite; flex-shrink:0; }
-@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
-
-/* ─── TICKER BAR ─────────────────────────────────────── */
-#ticker-bar {
-  background:var(--s2); border-bottom:1px solid var(--border);
-  height:34px; display:flex; align-items:center; overflow:hidden;
-}
-.ticker-tag {
-  flex-shrink:0; background:var(--text); color:#ffffff;
-  font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:2px;
-  padding:0 12px; height:100%; display:flex; align-items:center;
-}
-.ticker-scroll {
-  flex:1; overflow:hidden; position:relative;
-}
-.ticker-inner {
-  display:inline-block; white-space:nowrap;
-  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
-  animation:scroll-ticker 60s linear infinite; padding-left:100%;
-}
-@keyframes scroll-ticker { from{transform:translateX(0)} to{transform:translateX(-100%)} }
-
-/* ─── STOCK STRIP ────────────────────────────────────── */
-#stock-strip {
-  background:var(--s2); border-bottom:1px solid var(--border);
-  display:flex; align-items:center; gap:0; overflow-x:auto; scrollbar-width:none;
-}
-#stock-strip::-webkit-scrollbar { display:none; }
-
-.stock-item {
-  flex-shrink:0; padding:8px 18px; border-right:1px solid var(--border);
-  display:flex; flex-direction:column; gap:2px; min-width:130px;
-}
-.stock-ticker { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; }
-.stock-price { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--text); }
-.stock-change {
-  font-family:'IBM Plex Mono',monospace; font-size:10px;
-  display:flex; align-items:center; gap:3px;
-}
-.stock-change.up { color:var(--up); }
-.stock-change.down { color:var(--down); }
-.stock-change.flat { color:var(--flat); }
-.stock-loading { color:var(--dim); font-size:10px; font-family:'IBM Plex Mono',monospace; }
-
-/* ─── TABS ───────────────────────────────────────────── */
-#tabs {
-  background:var(--s2); border-bottom:1px solid var(--border);
-  display:flex; max-width:100%; overflow-x:auto; scrollbar-width:none;
-  position:sticky; top:56px; z-index:100;
-}
-#tabs::-webkit-scrollbar { display:none; }
-
-.tab {
-  flex-shrink:0; padding:0 28px; height:48px;
-  display:flex; align-items:center; gap:10px;
-  font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:1px;
-  color:var(--muted); cursor:pointer; border-bottom:2px solid transparent;
-  transition:all .2s; white-space:nowrap; border:none; background:none;
-}
-.tab:hover { color:var(--text); }
-.tab.active[data-tab="forest"] { color:var(--forest); border-bottom-color:var(--forest); }
-.tab.active[data-tab="metal"]  { color:var(--metal);  border-bottom-color:var(--metal); }
-.tab.active[data-tab="yara"]   { color:var(--yara);   border-bottom-color:var(--yara); }
-.tab.active[data-tab="rail"]   { color:#c084fc;        border-bottom-color:#c084fc; }
-
-.tab-icon { font-size:16px; }
-.tab-badge {
-  background:var(--s3); color:var(--muted);
-  font-size:9px; padding:2px 6px; border-radius:10px;
-  transition:all .2s;
-}
-.tab.active .tab-badge { background:rgba(255,255,255,.12); color:var(--text); }
-
-/* ─── MAIN ───────────────────────────────────────────── */
-main { max-width:1400px; margin:0 auto; padding:20px; position:relative; z-index:1; }
-
-/* ─── COMPANY PILLS ──────────────────────────────────── */
-.company-filter {
-  display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; align-items:center;
-}
-.company-pill {
-  padding:5px 14px; border-radius:20px; border:1px solid var(--border);
-  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.5px;
-  color:var(--muted); cursor:pointer; background:transparent; transition:all .2s;
-}
-.company-pill:hover { border-color:var(--text); color:var(--text); }
-.company-pill.active { border-color:currentColor; }
-.company-pill[data-industry="forest"].active { color:var(--forest); background:rgba(76,175,114,.1); border-color:var(--forest); }
-.company-pill[data-industry="metal"].active  { color:var(--metal);  background:rgba(100,168,212,.1); border-color:var(--metal); }
-.company-pill[data-industry="yara"].active   { color:var(--yara);   background:rgba(232,200,75,.1);  border-color:var(--yara); }
-.company-pill[data-industry="rail"].active   { color:#c084fc;       background:rgba(192,132,252,.1); border-color:#c084fc; }
-
-/* ─── STATUS ROW ─────────────────────────────────────── */
-.status-row {
-  display:flex; align-items:center; gap:12px; margin-bottom:16px;
-  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
-}
-.status-indicator { display:flex; align-items:center; gap:6px; }
-.si-dot { width:6px;height:6px;border-radius:50%;background:var(--dim); }
-.si-dot.ok    { background:var(--up); }
-.si-dot.busy  { background:var(--yara); animation:pulse-dot 0.5s infinite; }
-.si-dot.error { background:var(--down); }
-.status-row .sep { color:var(--border); }
-
-/* ─── NEWS GRID ──────────────────────────────────────── */
-.section-header {
-  display:flex; align-items:baseline; gap:12px; margin-bottom:14px;
-  border-bottom:1px solid var(--border); padding-bottom:10px;
-}
-.section-title {
-  font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:3px;
-}
-.section-count { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); }
-.section-time  { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim); margin-left:auto; }
-
-.news-grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
-  gap:14px;
-  margin-bottom:28px;
-}
-
-.news-card {
-  background:var(--s1); border:1px solid var(--border); border-radius:6px;
-  padding:18px; cursor:pointer; transition:all .2s;
-  animation:fade-up .35s ease both;
-  position:relative; overflow:hidden;
-}
-.news-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-}
-.news-card[data-industry="forest"]::before { background:var(--forest); }
-.news-card[data-industry="metal"]::before  { background:var(--metal); }
-.news-card[data-industry="yara"]::before   { background:var(--yara); }
-.news-card[data-industry="rail"]::before   { background:#c084fc; }
-
-.news-card:hover { border-color:var(--dim); transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
-.news-card.featured { border-left:2px solid; grid-column:span 2; }
-.news-card.featured[data-industry="forest"] { border-left-color:var(--forest); }
-.news-card.featured[data-industry="metal"]  { border-left-color:var(--metal); }
-.news-card.featured[data-industry="yara"]   { border-left-color:var(--yara); }
-@media(max-width:700px) { .news-card.featured { grid-column:span 1; } }
-
-@keyframes fade-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-
-.card-meta {
-  display:flex; align-items:center; gap:8px;
-  font-family:'IBM Plex Mono',monospace; font-size:10px;
-  margin-bottom:10px;
-}
-.card-company {
-  padding:2px 8px; border-radius:3px; font-size:9px; letter-spacing:1px;
-  background:var(--s3); color:var(--text);
-}
-.card-date { color:var(--muted); margin-left:auto; }
-
-.card-title {
-  font-weight:600; font-size:14px; line-height:1.45;
-  color:var(--text); margin-bottom:10px;
-}
-.news-card.featured .card-title { font-size:17px; }
-
-.card-summary { font-size:12px; color:var(--muted); line-height:1.65; margin-bottom:14px; }
-
-.card-footer {
-  display:flex; align-items:center; justify-content:space-between;
-  border-top:1px solid var(--border); padding-top:10px;
-  font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted);
-}
-.card-source { display:flex; align-items:center; gap:5px; }
-.src-dot { width:5px;height:5px;border-radius:50%; }
-[data-industry="forest"] .src-dot { background:var(--forest); }
-[data-industry="metal"]  .src-dot { background:var(--metal); }
-[data-industry="yara"]   .src-dot { background:var(--yara); }
-.card-link { color:inherit; text-decoration:none; opacity:.6; transition:opacity .2s; }
-.card-link:hover { opacity:1; }
-
-/* ─── LOADING SKELETON ───────────────────────────────── */
-.skeleton-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
-.skeleton-card {
-  background:var(--s1); border:1px solid var(--border); border-radius:6px;
-  padding:18px; animation:shimmer 1.5s infinite;
-}
-.skel-line {
-  background:var(--s3); border-radius:3px; margin-bottom:8px;
-}
-@keyframes shimmer {
-  0%,100%{opacity:.6} 50%{opacity:1}
-}
-
-/* ─── EMPTY / ERROR ──────────────────────────────────── */
-.panel-msg {
-  display:flex; flex-direction:column; align-items:center;
-  justify-content:center; padding:60px 20px; gap:12px; text-align:center;
-}
-.panel-msg .icon { font-size:40px; opacity:.3; }
-.panel-msg .msg  { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); letter-spacing:1px; }
-
-/* ─── PANEL SECTIONS ─────────────────────────────────── */
-.tab-panel { display:none; }
-.tab-panel.active { display:block; }
-
-/* ─── RESPONSIVE ─────────────────────────────────────── */
-@media(max-width:600px) {
-  .hdr-top { padding:0 12px; }
-  main { padding:12px; }
-  .tab { padding:0 16px; font-size:11px; }
-}
+.skel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.skel-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:18px;}
+.skel-line{background:var(--s3);border-radius:3px;margin-bottom:8px;animation:shimmer 1.4s infinite;}
+@keyframes shimmer{0%,100%{opacity:.6}50%{opacity:1}}
+.panel-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:10px;text-align:center;}
+.panel-msg .ico{font-size:36px;opacity:.3;}
+.panel-msg .msg{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+@media(max-width:600px){main{padding:12px;}.tab{padding:0 14px;}}
 </style>
 </head>
 <body>
-
-<!-- ─── HEADER ─── -->
 <div id="header">
-  <div class="hdr-top">
-    <div class="brand">
-      <div>
-        <div class="brand-name">INDUSTRY INTELLIGENCE</div>
-        <div class="brand-sub">REAL-TIME NEWS MONITOR · AI-POWERED</div>
-      </div>
+  <div class="hdr-main">
+    <div>
+      <div class="brand-name">INDUSTRY INTELLIGENCE</div>
+      <div class="brand-sub">RSS NEWS MONITOR · AUTO-REFRESH 60 MIN · EI API-AVAINTA</div>
     </div>
-    <div class="hdr-clock">
-      <div class="live-dot"></div>
-      <span id="clock">--:--:--</span>
-      <span class="sep">·</span>
-      <span class="next-refresh" id="next-refresh-label">Seuraava päivitys: --</span>
+    <div class="hdr-right">
+      <div class="live-chip"><div class="live-dot"></div><span>LIVE</span></div>
+      <div class="hdr-clock" id="clock">--:--:--</div>
+      <div class="next-lbl" id="next-lbl">⟳ --:--</div>
     </div>
   </div>
-
-  <!-- API Key bar -->
-  <div id="apikey-bar">
-    <label>🔑 ANTHROPIC API KEY:</label>
-    <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-    <button id="apikey-save" onclick="saveApiKey()">TALLENNA</button>
-    <span id="apikey-status"></span>
-    <button id="apikey-clear" onclick="clearApiKey()" style="display:none">Poista avain</button>
-  </div>
-
-  <!-- Ticker -->
+  <div id="stock-strip"><div class="stk-loading">Haetaan kurssitietoja...</div></div>
   <div id="ticker-bar">
-    <div class="ticker-tag">LIVE</div>
-    <div class="ticker-scroll">
-      <div class="ticker-inner" id="ticker-inner">Odottaa uutisia...</div>
-    </div>
-  </div>
-
-  <!-- Stock strip -->
-  <div id="stock-strip">
-    <div class="stock-loading" style="padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">Haetaan kurssitietoja...</div>
+    <div class="ticker-tag">UUTISET</div>
+    <div class="ticker-scroll"><div class="ticker-inner" id="ticker-txt">Haetaan uutisia...</div></div>
   </div>
 </div>
 
-<!-- ─── TABS ─── -->
 <div id="tabs">
-  <button class="tab active" data-tab="forest">
-    <span class="tab-icon">🌲</span> METSÄTEOLLISUUS
-    <span class="tab-badge" id="badge-forest">–</span>
-  </button>
-  <button class="tab" data-tab="metal">
-    <span class="tab-icon">⚙️</span> METALLITEOLLISUUS
-    <span class="tab-badge" id="badge-metal">–</span>
-  </button>
-  <button class="tab" data-tab="yara">
-    <span class="tab-icon">🌾</span> YARA
-    <span class="tab-badge" id="badge-yara">–</span>
-  </button>
-  <button class="tab" data-tab="rail">
-    <span class="tab-icon">🚂</span> RAUTATIE & LOGISTIIKKA
-    <span class="tab-badge" id="badge-rail">–</span>
-  </button>
+  <button class="tab active" data-tab="forest">🌲 METSÄTEOLLISUUS <span class="tab-badge" id="b-forest">–</span></button>
+  <button class="tab" data-tab="metal">⚙️ METALLITEOLLISUUS <span class="tab-badge" id="b-metal">–</span></button>
+  <button class="tab" data-tab="yara">🌾 YARA <span class="tab-badge" id="b-yara">–</span></button>
+  <button class="tab" data-tab="rail">🚂 RAUTATIE & LOGISTIIKKA <span class="tab-badge" id="b-rail">–</span></button>
 </div>
 
-<!-- ─── MAIN ─── -->
 <main>
-
-  <!-- FOREST PANEL -->
   <div class="tab-panel active" id="panel-forest">
-    <div class="company-filter" id="filter-forest">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">YHTIÖ:</span>
-      <button class="company-pill active" data-industry="forest" data-company="all">KAIKKI</button>
-      <button class="company-pill" data-industry="forest" data-company="Stora Enso">STORA ENSO</button>
-      <button class="company-pill" data-industry="forest" data-company="UPM">UPM</button>
-      <button class="company-pill" data-industry="forest" data-company="Metsä Group">METSÄ GROUP</button>
-      <button class="company-pill" data-industry="forest" data-company="Metsä Board">METSÄ BOARD</button>
-      <button class="company-pill" data-industry="forest" data-company="Metsäliitto">METSÄLIITTO</button>
-      <button class="company-pill" data-industry="forest" data-company="Koskisen">KOSKISEN</button>
-      <button class="company-pill" data-industry="forest" data-company="Sappi">SAPPI</button>
-      <button class="company-pill" data-industry="forest" data-company="Billerud">BILLERUD</button>
+    <div class="company-bar">
+      <span class="cbar-label">YHTIÖ:</span>
+      <button class="cpill active" data-ind="forest" data-co="all">KAIKKI</button>
+      <button class="cpill" data-ind="forest" data-co="Stora Enso">STORA ENSO</button>
+      <button class="cpill" data-ind="forest" data-co="UPM">UPM</button>
+      <button class="cpill" data-ind="forest" data-co="Metsä">METSÄ GROUP</button>
+      <button class="cpill" data-ind="forest" data-co="Koskinen">KOSKISEN</button>
+      <button class="cpill" data-ind="forest" data-co="Sappi">SAPPI</button>
+      <button class="cpill" data-ind="forest" data-co="Billerud">BILLERUD</button>
     </div>
-    <div class="status-row" id="status-forest">
-      <div class="status-indicator"><div class="si-dot" id="dot-forest"></div><span id="status-text-forest">Odottaa...</span></div>
-    </div>
-    <div id="content-forest"><div class="panel-msg"><div class="icon">🌲</div><div class="msg">LADATAAN...</div></div></div>
+    <div class="status-row"><div class="si"><div class="si-dot" id="dot-forest"></div><span id="st-forest">Ladataan...</span></div></div>
+    <div id="con-forest"></div>
   </div>
 
-  <!-- METAL PANEL -->
   <div class="tab-panel" id="panel-metal">
-    <div class="company-filter" id="filter-metal">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">YHTIÖ:</span>
-      <button class="company-pill active" data-industry="metal" data-company="all">KAIKKI</button>
-      <button class="company-pill" data-industry="metal" data-company="SSAB">SSAB</button>
-      <button class="company-pill" data-industry="metal" data-company="Outokumpu">OUTOKUMPU</button>
-      <button class="company-pill" data-industry="metal" data-company="Metso">METSO</button>
-      <button class="company-pill" data-industry="metal" data-company="Wärtsilä">WÄRTSILÄ</button>
-      <button class="company-pill" data-industry="metal" data-company="Kone">KONE</button>
-      <button class="company-pill" data-industry="metal" data-company="Rautaruukki">RAUTARUUKKI</button>
+    <div class="company-bar">
+      <span class="cbar-label">YHTIÖ:</span>
+      <button class="cpill active" data-ind="metal" data-co="all">KAIKKI</button>
+      <button class="cpill" data-ind="metal" data-co="SSAB">SSAB</button>
+      <button class="cpill" data-ind="metal" data-co="Outokumpu">OUTOKUMPU</button>
+      <button class="cpill" data-ind="metal" data-co="Metso">METSO</button>
+      <button class="cpill" data-ind="metal" data-co="Wärtsilä">WÄRTSILÄ</button>
+      <button class="cpill" data-ind="metal" data-co="Kone">KONE</button>
     </div>
-    <div class="status-row" id="status-metal">
-      <div class="status-indicator"><div class="si-dot" id="dot-metal"></div><span id="status-text-metal">Odottaa...</span></div>
-    </div>
-    <div id="content-metal"><div class="panel-msg"><div class="icon">⚙️</div><div class="msg">LADATAAN...</div></div></div>
+    <div class="status-row"><div class="si"><div class="si-dot" id="dot-metal"></div><span id="st-metal">Ladataan...</span></div></div>
+    <div id="con-metal"></div>
   </div>
 
-  <!-- YARA PANEL -->
   <div class="tab-panel" id="panel-yara">
-    <div class="status-row" id="status-yara">
-      <div class="status-indicator"><div class="si-dot" id="dot-yara"></div><span id="status-text-yara">Odottaa...</span></div>
-    </div>
-    <div id="content-yara"><div class="panel-msg"><div class="icon">🌾</div><div class="msg">LADATAAN...</div></div></div>
+    <div class="status-row"><div class="si"><div class="si-dot" id="dot-yara"></div><span id="st-yara">Ladataan...</span></div></div>
+    <div id="con-yara"></div>
   </div>
 
-  <!-- RAIL PANEL -->
   <div class="tab-panel" id="panel-rail">
-    <div class="status-row" id="status-rail">
-      <div class="status-indicator"><div class="si-dot" id="dot-rail"></div><span id="status-text-rail">Odottaa...</span></div>
-    </div>
-    <div id="content-rail"><div class="panel-msg"><div class="icon">🚂</div><div class="msg">LADATAAN...</div></div></div>
+    <div class="status-row"><div class="si"><div class="si-dot" id="dot-rail"></div><span id="st-rail">Ladataan...</span></div></div>
+    <div id="con-rail"></div>
   </div>
-
 </main>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────
-const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
-const STOCK_REFRESH_MS    = 15 * 60 * 1000;  // 15 min
+// ── CONFIG ────────────────────────────────────────────────────
+// rss2json.com: free CORS proxy for RSS, no auth needed
+const R2J = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
-// Pörssilistatut yhtiöt ja niiden ticker-symbolit
-const STOCKS = [
-  { name:'Stora Enso', sym:'STERV.HE',  industry:'forest' },
-  { name:'UPM',        sym:'UPM.HE',    industry:'forest' },
-  { name:'Metsä Board',sym:'METSB.HE',  industry:'forest' },
-  { name:'SSAB A',     sym:'SSAB-A.ST', industry:'metal'  },
-  { name:'Outokumpu',  sym:'OUT1V.HE',  industry:'metal'  },
-  { name:'Metso',      sym:'METSO.HE',  industry:'metal'  },
-  { name:'Wärtsilä',   sym:'WRT1V.HE',  industry:'metal'  },
-  { name:'Kone',       sym:'KNEBV.HE',  industry:'metal'  },
-  { name:'Yara',       sym:'YAR.OL',    industry:'yara'   },
-];
-
-// News query configs per industry
-const INDUSTRY_CONFIG = {
+const IND = {
   forest: {
-    label:'Metsäteollisuus', color:'var(--forest)',
-    query:'Stora Enso UPM "Metsä Group" "Metsä Board" Metsäliitto Koskisen Sappi Billerud metsäteollisuus uutiset news 2025',
-    companies:['Stora Enso','UPM','Metsä Group','Metsä Board','Metsäliitto','Koskisen','Sappi','Billerud'],
-    system:`Olet metsäteollisuuden uutisasiantuntija. Hae tuoreimmat uutiset näistä yhtiöistä: Stora Enso, UPM, Metsä Group, Metsä Board, Metsäliitto, Koskisen, Sappi, Billerud. 
-Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (yrityksen nimi), date, featured (boolean, max 2).`
+    // Broad keywords - match company names and forest industry terms
+    kw: ['stora enso','stora-enso','upm','metsä','metsa','koskinen','sappi','billerud',
+         'metsäliitto','metsäteollisuus','paperi','sellu','kartonki','puu','sahateollisuus',
+         'timber','pulp','paper','forest','wood','cellulose','kraftliner','packaging board',
+         'skogsindus','skogsindustri'],
+    feeds: [
+      // Google News RSS - very reliable, covers all major news
+      ['https://news.google.com/rss/search?q=Stora+Enso&hl=fi&gl=FI&ceid=FI:fi','Google News: Stora Enso'],
+      ['https://news.google.com/rss/search?q=UPM+metsä&hl=fi&gl=FI&ceid=FI:fi','Google News: UPM'],
+      ['https://news.google.com/rss/search?q=Metsä+Group+OR+Metsäliitto&hl=fi&gl=FI&ceid=FI:fi','Google News: Metsä'],
+      ['https://news.google.com/rss/search?q=metsäteollisuus+paperi+sellu&hl=fi&gl=FI&ceid=FI:fi','Google News: Metsäteollisuus'],
+      ['https://news.google.com/rss/search?q=Koskisen+OR+Sappi+OR+Billerud&hl=en&gl=US&ceid=US:en','Google News: Koskisen/Sappi'],
+      ['https://news.google.com/rss/search?q=forest+industry+pulp+paper&hl=en&gl=US&ceid=US:en','Google News: Forest Industry'],
+    ]
   },
   metal: {
-    label:'Metalliteollisuus', color:'var(--metal)',
-    query:'SSAB Outokumpu Metso Wärtsilä Kone metalliteollisuus steel metal news 2025',
-    companies:['SSAB','Outokumpu','Metso','Wärtsilä','Kone','Rautaruukki'],
-    system:`Olet metalliteollisuuden uutisasiantuntija. Hae tuoreimmat uutiset näistä yhtiöistä: SSAB, Outokumpu, Metso, Wärtsilä, Kone, Rautaruukki.
-Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (yrityksen nimi), date, featured (boolean, max 2).`
+    kw: ['ssab','outokumpu','metso','wärtsilä','wartsila','kone','teräs','stål','steel',
+         'metal','outotec','ruukki','rautaruukki','metalliteollisuus','teollisuus'],
+    feeds: [
+      ['https://news.google.com/rss/search?q=SSAB+teräs&hl=fi&gl=FI&ceid=FI:fi','Google News: SSAB'],
+      ['https://news.google.com/rss/search?q=Outokumpu+steel&hl=fi&gl=FI&ceid=FI:fi','Google News: Outokumpu'],
+      ['https://news.google.com/rss/search?q=Metso+OR+Wärtsilä+OR+Kone&hl=fi&gl=FI&ceid=FI:fi','Google News: Metso/Wärtsilä/Kone'],
+      ['https://news.google.com/rss/search?q=steel+industry+nordic&hl=en&gl=US&ceid=US:en','Google News: Steel Industry'],
+      ['https://news.google.com/rss/search?q=metalliteollisuus+Finland&hl=fi&gl=FI&ceid=FI:fi','Google News: Metalliteollisuus'],
+    ]
   },
   yara: {
-    label:'Yara', color:'var(--yara)',
-    query:'Yara International fertilizer lannoite uutiset news 2025',
-    companies:['Yara'],
-    system:`Olet Yara International -yhtiön uutisasiantuntija. Hae tuoreimmat uutiset Yarasta: tulokset, strategia, lannoitemarkkinat, kestävyys, investoinnit.
-Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company ("Yara"), date, featured (boolean, max 2).`
+    kw: ['yara','lannoite','fertilizer','nitrogen','typpi','ammonia','ammoniak',
+         'agri','potash','kalium','gjødsel','kunstgjødsel'],
+    feeds: [
+      ['https://news.google.com/rss/search?q=Yara+International&hl=en&gl=US&ceid=US:en','Google News: Yara'],
+      ['https://news.google.com/rss/search?q=Yara+fertilizer&hl=en&gl=US&ceid=US:en','Google News: Yara Fertilizer'],
+      ['https://news.google.com/rss/search?q=lannoite+typpi+maatalous&hl=fi&gl=FI&ceid=FI:fi','Google News: Lannoite FI'],
+      ['https://news.google.com/rss/search?q=fertilizer+nitrogen+market+2025&hl=en&gl=US&ceid=US:en','Google News: Fertilizer Market'],
+      ['https://news.google.com/rss/search?q=Yara+Oslo+results&hl=en&gl=US&ceid=US:en','Google News: Yara Results'],
+    ]
   },
   rail: {
-    label:'Rautatie & Logistiikka', color:'#c084fc',
-    query:'rautatie logistiikka railway logistics VR freight Finland Europe news 2025',
-    companies:[],
-    system:`Olet rautatie- ja logistiikkauutisten asiantuntija. Hae tuoreimmat uutiset rautatiekuljetuksista, logistiikasta, rahtiliikenteestä ja infrastruktuurista.
-Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 lausetta), source, url (tai ""), company (organisaatio tai ""), date, featured (boolean, max 2).`
+    kw: ['rautatie','juna','vr','logistiikka','railway','freight','logistics','rail',
+         'cargo','kuljetukset','väylä','infra','ratahallinto','railfreight',
+         'intermodal','liikenne'],
+    feeds: [
+      ['https://news.google.com/rss/search?q=rautatie+logistiikka+Suomi&hl=fi&gl=FI&ceid=FI:fi','Google News: Rautatie FI'],
+      ['https://news.google.com/rss/search?q=VR+Group+rautatie&hl=fi&gl=FI&ceid=FI:fi','Google News: VR Group'],
+      ['https://news.google.com/rss/search?q=railway+freight+Europe+2025&hl=en&gl=US&ceid=US:en','Google News: Rail Freight'],
+      ['https://news.google.com/rss/search?q=rail+logistics+Nordic+Finland&hl=en&gl=US&ceid=US:en','Google News: Rail Nordic'],
+      ['https://news.google.com/rss/search?q=railfreight+intermodal+cargo&hl=en&gl=US&ceid=US:en','Google News: Intermodal'],
+    ]
   }
 };
 
-// ─── API KEY ──────────────────────────────────────────────────
-function getApiKey() { return localStorage.getItem('iim_apikey') || ''; }
+const STOCKS = [
+  {sym:'STERV.HE',name:'Stora Enso',ind:'forest'},
+  {sym:'UPM.HE',  name:'UPM',       ind:'forest'},
+  {sym:'METSB.HE',name:'Metsä Board',ind:'forest'},
+  {sym:'OUT1V.HE',name:'Outokumpu', ind:'metal'},
+  {sym:'METSO.HE',name:'Metso',     ind:'metal'},
+  {sym:'WRT1V.HE',name:'Wärtsilä',  ind:'metal'},
+  {sym:'KNEBV.HE',name:'Kone',      ind:'metal'},
+  {sym:'YAR.OL',  name:'Yara',      ind:'yara'},
+];
 
-function saveApiKey() {
-  const key = document.getElementById('apikey-input').value.trim();
-  if (!key.startsWith('sk-ant-')) {
-    document.getElementById('apikey-status').textContent = '⚠ Avain alkaa sk-ant-...';
-    document.getElementById('apikey-status').style.color = '#dc2626';
-    return;
-  }
-  localStorage.setItem('iim_apikey', key);
-  document.getElementById('apikey-status').textContent = '✓ Tallennettu!';
-  document.getElementById('apikey-status').style.color = '#16a34a';
-  document.getElementById('apikey-clear').style.display = 'inline';
-  document.getElementById('apikey-bar').style.background = '#f0fdf4';
-  document.getElementById('apikey-bar').style.borderBottomColor = '#16a34a';
-  setTimeout(() => { document.getElementById('apikey-bar').classList.add('hidden'); }, 1500);
-  fetchAll();
-  fetchStocks();
-}
+// ── STATE ─────────────────────────────────────────────────────
+const store = {articles:{forest:[],metal:[],yara:[],rail:[]}, filter:{forest:'all',metal:'all',yara:'all',rail:'all'}};
+let nextRefreshAt = Date.now() + 36e5;
 
-function clearApiKey() {
-  localStorage.removeItem('iim_apikey');
-  document.getElementById('apikey-input').value = '';
-  document.getElementById('apikey-status').textContent = '';
-  document.getElementById('apikey-clear').style.display = 'none';
-  document.getElementById('apikey-bar').classList.remove('hidden');
-  document.getElementById('apikey-bar').style.background = '#fff8e7';
-  document.getElementById('apikey-bar').style.borderBottomColor = '#e8b84b';
-}
+// ── CLOCK ─────────────────────────────────────────────────────
+setInterval(()=>{
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('fi-FI');
+  const rem = Math.max(0,Math.round((nextRefreshAt-Date.now())/1000));
+  document.getElementById('next-lbl').textContent = `⟳ ${Math.floor(rem/60)}:${String(rem%60).padStart(2,'0')}`;
+},1000);
 
-function initApiKeyBar() {
-  const key = getApiKey();
-  if (key) {
-    document.getElementById('apikey-input').value = key;
-    document.getElementById('apikey-bar').classList.add('hidden');
-    document.getElementById('apikey-clear').style.display = 'inline';
-  }
-}
+// ── TABS ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab,.tab-panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+}));
 
-function apiHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'anthropic-version': '2023-06-01',
-    'anthropic-dangerous-direct-browser-access': 'true',
-    'x-api-key': getApiKey()
-  };
-}
+// ── COMPANY PILLS ─────────────────────────────────────────────
+document.querySelectorAll('.cpill').forEach(p=>p.addEventListener('click',()=>{
+  const ind=p.dataset.ind;
+  document.querySelectorAll(`.cpill[data-ind="${ind}"]`).forEach(x=>x.classList.remove('active'));
+  p.classList.add('active');
+  store.filter[ind]=p.dataset.co;
+  render(ind);
+}));
 
-// ─── STATE ────────────────────────────────────────────────────
-const state = {
-  articles: { forest:[], metal:[], yara:[], rail:[] },
-  lastFetch: { forest:0, metal:0, yara:0, rail:0 },
-  activeTab: 'forest',
-  companyFilter: { forest:'all', metal:'all' },
-};
-
-let refreshTimer = null;
-let stockTimer   = null;
-let countdownSec = REFRESH_INTERVAL_MS / 1000;
-
-// ─── CLOCK ────────────────────────────────────────────────────
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent =
-    now.toLocaleTimeString('fi-FI', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  countdownSec = Math.max(0, Math.round((REFRESH_INTERVAL_MS - (Date.now() - Math.min(...Object.values(state.lastFetch).filter(t=>t>0), Date.now()))) / 1000));
-  const m = Math.floor(countdownSec / 60), s = countdownSec % 60;
-  document.getElementById('next-refresh-label').textContent =
-    `Seuraava päivitys: ${m}:${String(s).padStart(2,'0')}`;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ─── TABS ─────────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    state.activeTab = tab.dataset.tab;
-    document.getElementById('panel-'+state.activeTab).classList.add('active');
-  });
-});
-
-// ─── COMPANY FILTER ───────────────────────────────────────────
-document.querySelectorAll('.company-pill').forEach(pill => {
-  pill.addEventListener('click', () => {
-    const industry = pill.dataset.industry;
-    document.querySelectorAll(`.company-pill[data-industry="${industry}"]`).forEach(p => p.classList.remove('active'));
-    pill.classList.add('active');
-    state.companyFilter[industry] = pill.dataset.company;
-    renderArticles(industry);
-  });
-});
-
-// ─── FETCH NEWS ───────────────────────────────────────────────
-async function fetchIndustry(industry) {
-  const cfg = INDUSTRY_CONFIG[industry];
-  setStatus(industry, 'busy', 'Haetaan uutisia...');
-  showSkeleton(industry);
-
-  if(!getApiKey()) {
-    setStatus(industry,'error','Anna API-avain ensin');
-    document.getElementById('content-'+industry).innerHTML='<div class="panel-msg"><div class="icon">🔑</div><div class="msg">ANNA ANTHROPIC API-AVAIN YLÄPALKISSA</div></div>';
-    return;
-  }
+// ── FETCH ONE FEED ─────────────────────────────────────────────
+async function fetchFeed(url, src) {
   try {
-    // Step 1: Ask Claude to search the web (may use tool_use)
-    const res1 = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:apiHeaders(),
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:4000,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        system: cfg.system,
-        messages:[{role:'user', content:'Hae 10-14 tuoreinta uutista. Hakusanat: '+cfg.query+'. Palauta VAIN JSON-taulukko.'}]
-      })
-    });
-    const d1 = await res1.json();
-    if(d1.error) throw new Error(d1.error.message||'API virhe');
-
-    // Step 2: If Claude used web_search tool, send tool results back
-    let finalContent = d1.content || [];
-    if(d1.stop_reason === 'tool_use') {
-      const toolUseBlocks = d1.content.filter(b => b.type === 'tool_use');
-      const toolResults = toolUseBlocks.map(b => ({
-        type:'tool_result', tool_use_id: b.id,
-        content: '(web search results provided)'
-      }));
-      const res2 = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:apiHeaders(),
-        body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:4000,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          system: cfg.system,
-          messages:[
-            {role:'user', content:'Hae 10-14 tuoreinta uutista. Hakusanat: '+cfg.query+'. Palauta VAIN JSON-taulukko.'},
-            {role:'assistant', content: d1.content},
-            {role:'user', content: toolResults}
-          ]
-        })
-      });
-      const d2 = await res2.json();
-      finalContent = d2.content || [];
-    }
-
-    // Extract all text from response
-    let raw = '';
-    function extractText(blocks) {
-      (blocks||[]).forEach(b => {
-        if(b.type==='text') raw += b.text + '\n';
-        if(b.type==='tool_result') {
-          if(typeof b.content==='string') raw += b.content;
-          if(Array.isArray(b.content)) b.content.forEach(c=>{ if(c.type==='text') raw+=c.text; });
-        }
-      });
-    }
-    extractText(finalContent);
-
-    // Parse JSON – try multiple patterns
-    raw = raw.replace(/```json/gi,'').replace(/```/g,'');
-    let articles = null;
-    // Try full array match
-    const m1 = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if(m1) { try { articles = JSON.parse(m1[0]); } catch(e){} }
-    // Try greedy from first [ to last ]
-    if(!articles) {
-      const start = raw.indexOf('['), end = raw.lastIndexOf(']');
-      if(start!==-1 && end>start) { try { articles = JSON.parse(raw.slice(start,end+1)); } catch(e){} }
-    }
-    if(!articles2 || !articles2.length) throw new Error('Ei JSON-vastausta');
-
-    // Inject industry field
-    articles2 = articles2.map(a => ({...a, industry}));
-
-    state.articles[industry] = articles2;
-    state.lastFetch[industry] = Date.now();
-    document.getElementById(`badge-${industry}`).textContent = articles2.length;
-
-    setStatus(industry, 'ok', `${articles2.length} uutista · ${new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`);
-    renderArticles(industry);
-    updateTicker();
-
-  } catch(err) {
-    console.error(industry, err);
-    setStatus(industry, 'error', 'Hakuvirhe: ' + err.message);
-    document.getElementById('content-'+industry).innerHTML =
-      `<div class="panel-msg"><div class="icon">⚠️</div><div class="msg">${err.message}</div></div>`;
-  }
+    const r = await fetch(R2J+encodeURIComponent(url)+'&count=30');
+    const d = await r.json();
+    if(d.status!=='ok') return [];
+    return (d.items||[]).map(i=>({
+      title:  strip(i.title||''),
+      desc:   strip(i.description||i.content||'').slice(0,280),
+      url:    i.link||'',
+      date:   i.pubDate ? fmtDate(i.pubDate) : '',
+      rawDate:i.pubDate||'',
+      source: src,
+      _kw:    (i.title+' '+(i.description||'')).toLowerCase()
+    }));
+  } catch(e){ return []; }
 }
 
-function fetchAll() {
-  ['forest','metal','yara','rail'].forEach(ind => fetchIndustry(ind));
+// ── FETCH INDUSTRY ─────────────────────────────────────────────
+async function fetchIndustry(ind) {
+  setDot(ind,'busy','Haetaan uutisia...');
+  showSkel(ind);
+  const cfg = IND[ind];
+  const results = await Promise.allSettled(cfg.feeds.map(([u,s])=>fetchFeed(u,s)));
+  let items = results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+
+  // Soft keyword filter - keep articles where at least one keyword matches
+  // (Google News feeds are already pre-filtered by search query, so be lenient)
+  const filtered = items.filter(a=>cfg.kw.some(k=>a._kw.includes(k)));
+  // If strict filter returns <5 items, use all fetched items
+  items = filtered.length >= 3 ? filtered : items;
+
+  // Deduplicate
+  const seen=new Set();
+  items = items.filter(a=>{
+    const k=a.title.toLowerCase().slice(0,50);
+    if(seen.has(k)) return false; seen.add(k); return true;
+  });
+
+  // Sort newest first
+  items.sort((a,b)=>new Date(b.rawDate)-new Date(a.rawDate));
+
+  // Mark top 2 featured
+  items = items.map((a,i)=>({...a,ind,featured:i<2}));
+
+  store.articles[ind]=items;
+  document.getElementById('b-'+ind).textContent=items.length;
+  setDot(ind,'ok',`${items.length} uutista · ${new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'})}`);
+  render(ind);
+  updateTicker();
 }
 
-// ─── RENDER ───────────────────────────────────────────────────
-function renderArticles(industry) {
-  const container = document.getElementById('content-'+industry);
-  let articles = state.articles[industry] || [];
-
-  // Company filter
-  const filter = state.companyFilter[industry];
-  if (filter && filter !== 'all') {
-    articles = articles.filter(a => (a.company||'').toLowerCase().includes(filter.toLowerCase()));
-  }
-
-  if (!articles.length) {
-    container.innerHTML = `<div class="panel-msg"><div class="icon">📭</div><div class="msg">EI UUTISIA</div></div>`;
+// ── RENDER ─────────────────────────────────────────────────────
+function render(ind) {
+  const con=document.getElementById('con-'+ind);
+  let items=store.articles[ind]||[];
+  const f=store.filter[ind];
+  if(f&&f!=='all') items=items.filter(a=>
+    a.title.toLowerCase().includes(f.toLowerCase())||
+    a.desc.toLowerCase().includes(f.toLowerCase())||
+    a._kw.includes(f.toLowerCase())
+  );
+  if(!items.length){
+    con.innerHTML='<div class="panel-msg"><div class="ico">📭</div><div class="msg">EI UUTISIA HAULLA</div></div>';
     return;
   }
-
-  const cfg = INDUSTRY_CONFIG[industry];
-  const grid = document.createElement('div');
-  grid.className = 'news-grid';
-
-  articles.forEach((a, i) => {
-    const card = document.createElement('div');
-    card.className = 'news-card' + (a.featured ? ' featured' : '');
-    card.dataset.industry = industry;
-    card.style.animationDelay = (i * 0.05) + 's';
-
-    card.innerHTML = `
-      <div class="card-meta">
-        <span class="card-company">${esc(a.company||'')}</span>
-        <span class="card-date">${esc(a.date||'')}</span>
+  const grid=document.createElement('div');
+  grid.className='news-grid';
+  items.forEach((a,i)=>{
+    const c=document.createElement('div');
+    c.className='news-card'+(a.featured?' featured':'');
+    c.dataset.ind=a.ind;
+    c.style.animationDelay=(i*.04)+'s';
+    c.innerHTML=`
+      <div class="card-top">
+        <span class="card-co" data-ind="${a.ind}">${esc(guessCo(a,ind))}</span>
+        <span class="card-date">${esc(a.date)}</span>
       </div>
       <div class="card-title">${esc(a.title)}</div>
-      <div class="card-summary">${esc(a.summary||'')}</div>
-      <div class="card-footer">
-        <div class="card-source">
-          <div class="src-dot"></div>
-          <span>${esc(a.source||'')}</span>
-        </div>
-        ${a.url ? `<a class="card-link" href="${esc(a.url)}" target="_blank" rel="noopener">LUE →</a>` : ''}
+      ${a.desc?`<div class="card-desc">${esc(a.desc)}</div>`:''}
+      <div class="card-foot">
+        <div class="card-src"><div class="src-dot" data-ind="${a.ind}"></div><span>${esc(a.source)}</span></div>
+        ${a.url?`<a class="read-more" href="${esc(a.url)}" target="_blank" rel="noopener">LUE →</a>`:''}
       </div>`;
-
-    if (a.url) card.addEventListener('click', e => { if(e.target.tagName!=='A') window.open(a.url,'_blank'); });
-    grid.appendChild(card);
+    if(a.url) c.addEventListener('click',e=>{if(e.target.tagName!=='A')window.open(a.url,'_blank');});
+    grid.appendChild(c);
   });
-
-  container.innerHTML = '';
-  container.appendChild(grid);
+  con.innerHTML=''; con.appendChild(grid);
 }
 
-// ─── SKELETON ─────────────────────────────────────────────────
-function showSkeleton(industry) {
-  const container = document.getElementById('content-'+industry);
-  container.innerHTML = `<div class="skeleton-grid">${Array(6).fill(0).map((_,i) => `
-    <div class="skeleton-card" style="animation-delay:${i*0.1}s">
-      <div class="skel-line" style="width:30%;height:10px;margin-bottom:14px"></div>
-      <div class="skel-line" style="width:90%;height:14px"></div>
-      <div class="skel-line" style="width:75%;height:14px"></div>
-      <div class="skel-line" style="width:60%;height:14px;margin-top:10px"></div>
-      <div class="skel-line" style="width:85%;height:11px"></div>
-      <div class="skel-line" style="width:40%;height:11px;margin-top:14px"></div>
-    </div>`).join('')}</div>`;
-}
-
-// ─── STATUS ───────────────────────────────────────────────────
-function setStatus(industry, state, text) {
-  const dot = document.getElementById('dot-'+industry);
-  const label = document.getElementById('status-text-'+industry);
-  dot.className = 'si-dot ' + state;
-  label.textContent = text;
-}
-
-// ─── TICKER ───────────────────────────────────────────────────
-function updateTicker() {
-  const all = [...Object.values(state.articles)].flat();
-  if (!all.length) return;
-  document.getElementById('ticker-inner').textContent =
-    all.map(a => `⬥ ${a.company ? '['+a.company+'] ' : ''}${a.title}`).join('    ');
-}
-
-// ─── STOCKS ───────────────────────────────────────────────────
+// ── STOCKS ─────────────────────────────────────────────────────
 async function fetchStocks() {
-  const strip = document.getElementById('stock-strip');
-  strip.innerHTML = '';
-
-  // Use Claude to get stock prices via web search
-  try {
-    const symbols = STOCKS.map(s => s.sym).join(', ');
-    const stockNames = STOCKS.map(s=>s.name+' ('+s.sym+')').join(', ');
-    const sres = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:apiHeaders(),
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1500,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        system:'Hae osakekurssit. Palauta VAIN JSON-taulukko. Kentät: { sym, name, price, change, changePct, currency }',
-        messages:[{role:'user', content:'Hae nykyiset osakekurssit: '+stockNames+'. Palauta VAIN JSON-taulukko.'}]
-      })
-    });
-    const sd = await sres.json();
-    if(sd.error) throw new Error(sd.error.message);
-
-    let sraw = '';
-    (sd.content||[]).forEach(b=>{
-      if(b.type==='text') sraw+=b.text;
-    });
-    // If tool_use, do second call
-    if(sd.stop_reason==='tool_use') {
-      const toolUses = (sd.content||[]).filter(b=>b.type==='tool_use');
-      const sres2 = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:apiHeaders(),
-        body: JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:1500,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          system:'Hae osakekurssit. Palauta VAIN JSON-taulukko. Kentät: { sym, name, price, change, changePct, currency }',
-          messages:[
-            {role:'user', content:'Hae nykyiset osakekurssit: '+stockNames+'. Palauta VAIN JSON-taulukko.'},
-            {role:'assistant', content:sd.content},
-            {role:'user', content:toolUses.map(b=>({type:'tool_result',tool_use_id:b.id,content:'search done'}))}
-          ]
-        })
-      });
-      const sd2 = await sres2.json();
-      (sd2.content||[]).forEach(b=>{ if(b.type==='text') sraw+=b.text; });
+  const strip=document.getElementById('stock-strip');
+  strip.innerHTML='';
+  await Promise.all(STOCKS.map(async s=>{
+    const div=document.createElement('div'); div.className='stock-item';
+    try {
+      // Yahoo Finance via corsproxy.io
+      const url=`https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+s.sym+'?interval=1d&range=1d')}`;
+      const r=await fetch(url);
+      const d=await r.json();
+      const m=d?.chart?.result?.[0]?.meta;
+      let price='–',chg=0,cur='€';
+      if(m){
+        price=(m.regularMarketPrice||0).toFixed(2);
+        const prev=m.chartPreviousClose||m.previousClose||0;
+        chg=prev?((m.regularMarketPrice-prev)/prev*100):0;
+        cur=m.currency==='EUR'?'€':m.currency||'€';
+      }
+      const cls=chg>0.05?'up':chg<-0.05?'down':'flat';
+      const arr=chg>0.05?'▲':chg<-0.05?'▼':'—';
+      div.innerHTML=`<div class="stk-sym">${esc(s.sym)}</div><div class="stk-name">${esc(s.name)}</div><div class="stk-price">${price} ${cur}</div><div class="stk-chg ${cls}">${arr} ${Math.abs(chg).toFixed(2)}%</div>`;
+    } catch(e){
+      div.innerHTML=`<div class="stk-sym">${esc(s.sym)}</div><div class="stk-name">${esc(s.name)}</div><div class="stk-price" style="color:var(--dim)">–</div><div class="stk-chg flat">–</div>`;
     }
-
-    sraw = sraw.replace(/```json|```/gi,'');
-    let prices = null;
-    const sm = sraw.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if(sm) { try{ prices=JSON.parse(sm[0]); }catch(e){} }
-    if(!prices) {
-      const si=sraw.indexOf('['), se=sraw.lastIndexOf(']');
-      if(si!==-1&&se>si){ try{ prices=JSON.parse(sraw.slice(si,se+1)); }catch(e){} }
-    }
-    if(!prices) throw new Error('no json');
-    strip.innerHTML = '';
-
-    prices.forEach(p => {
-      const chg = parseFloat(p.changePct) || 0;
-      const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
-      const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '—';
-      const div = document.createElement('div');
-      div.className = 'stock-item';
-      div.innerHTML = `
-        <div class="stock-ticker">${esc(p.sym||p.name)}</div>
-        <div class="stock-price">${parseFloat(p.price).toFixed(2)} ${p.currency||'€'}</div>
-        <div class="stock-change ${cls}">${arrow} ${Math.abs(chg).toFixed(2)}%</div>`;
-      strip.appendChild(div);
-    });
-
-  } catch(err) {
-    // Fallback: show static placeholders
-    strip.innerHTML = STOCKS.map(s =>
-      `<div class="stock-item">
-        <div class="stock-ticker">${s.sym}</div>
-        <div class="stock-price" style="color:var(--dim)">–</div>
-        <div class="stock-change flat">Ei dataa</div>
-      </div>`
-    ).join('');
-  }
+    strip.appendChild(div);
+  }));
 }
 
-// ─── AUTO REFRESH ─────────────────────────────────────────────
-function scheduleRefresh() {
-  clearInterval(refreshTimer);
-  clearInterval(stockTimer);
-  refreshTimer = setInterval(fetchAll, REFRESH_INTERVAL_MS);
-  stockTimer   = setInterval(fetchStocks, STOCK_REFRESH_MS);
+// ── TICKER ─────────────────────────────────────────────────────
+function updateTicker(){
+  const all=Object.values(store.articles).flat();
+  if(!all.length) return;
+  document.getElementById('ticker-txt').textContent=all.slice(0,40).map(a=>`⬥ ${a.title}`).join('    ');
 }
 
-// ─── UTILS ────────────────────────────────────────────────────
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── HELPERS ────────────────────────────────────────────────────
+function showSkel(ind){
+  document.getElementById('con-'+ind).innerHTML=`<div class="skel-grid">${Array(6).fill(0).map((_,i)=>`<div class="skel-card" style="animation-delay:${i*.1}s"><div class="skel-line" style="width:28%;height:10px"></div><div class="skel-line" style="width:88%;height:14px;margin-top:10px"></div><div class="skel-line" style="width:70%;height:14px"></div><div class="skel-line" style="width:60%;height:11px;margin-top:8px"></div><div class="skel-line" style="width:85%;height:11px"></div><div class="skel-line" style="width:35%;height:10px;margin-top:12px"></div></div>`).join('')}</div>`;
 }
-
-// ─── INIT ─────────────────────────────────────────────────────
-initApiKeyBar();
-if(getApiKey()) {
-  fetchAll();
-  fetchStocks();
-  scheduleRefresh();
+function setDot(ind,state,txt){
+  document.getElementById('dot-'+ind).className='si-dot '+(state==='ok'?'ok':state==='busy'?'busy':'err');
+  document.getElementById('st-'+ind).textContent=txt;
 }
+const CO_MAP={forest:[['Stora Enso','stora enso'],['UPM','upm'],['Metsä Board','metsä board'],['Metsä Group','metsä group'],['Metsäliitto','metsäliitto'],['Koskisen','koskisen'],['Sappi','sappi'],['Billerud','billerud']],metal:[['SSAB','ssab'],['Outokumpu','outokumpu'],['Metso','metso'],['Wärtsilä','wärtsilä','wartsila'],['Kone','kone ']],yara:[['Yara','yara']],rail:[['VR','vr '],['Väylä','väylä'],['DB Cargo','db cargo'],['Finnlines','finnlines']]};
+function guessCo(a,ind){
+  const raw=(a.title+' '+a.desc).toLowerCase();
+  for(const [n,...ks] of (CO_MAP[ind]||[])) if(ks.some(k=>raw.includes(k))) return n;
+  return a.source;
+}
+function strip(h){return h.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&quot;/g,'"').trim();}
+function fmtDate(d){try{return new Date(d).toLocaleDateString('fi-FI',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return '';}}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// Allow Enter key in API input
-document.getElementById('apikey-input').addEventListener('keydown', e => {
-  if(e.key === 'Enter') saveApiKey();
-});
+// ── AUTO REFRESH ───────────────────────────────────────────────
+function fetchAll(){
+  nextRefreshAt=Date.now()+36e5;
+  ['forest','metal','yara','rail'].forEach(fetchIndustry);
+}
+setInterval(fetchAll,36e5);
+setInterval(fetchStocks,9e5);
+
+fetchAll();
+fetchStocks();
 </script>
 </body>
 </html>
