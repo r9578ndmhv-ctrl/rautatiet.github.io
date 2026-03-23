@@ -61,6 +61,31 @@ body::before {
 }
 .brand-sub { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:2px; }
 
+/* API key bar */
+#apikey-bar {
+  background:#fff8e7; border-bottom:2px solid #e8b84b;
+  padding:10px 20px; display:flex; align-items:center; gap:12px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px;
+}
+#apikey-bar.hidden { display:none; }
+#apikey-bar label { color:#7a6000; white-space:nowrap; font-weight:600; }
+#apikey-input {
+  flex:1; max-width:380px; padding:7px 12px;
+  border:1px solid #d4a800; border-radius:4px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px;
+  background:#fffdf5; color:#1a1a1a; outline:none;
+}
+#apikey-input:focus { border-color:#b8860b; box-shadow:0 0 0 2px rgba(184,134,11,.15); }
+#apikey-save {
+  padding:7px 16px; background:#b8860b; color:#fff;
+  border:none; border-radius:4px; cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; font-size:11px;
+  font-weight:600; letter-spacing:1px; transition:background .2s;
+}
+#apikey-save:hover { background:#9a700a; }
+#apikey-status { font-size:11px; color:#6b7280; }
+#apikey-clear { font-size:11px; color:#dc2626; cursor:pointer; text-decoration:underline; background:none; border:none; font-family:'IBM Plex Mono',monospace; }
+
 .hdr-clock {
   margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:12px;
   color:var(--muted); display:flex; align-items:center; gap:12px;
@@ -296,6 +321,15 @@ main { max-width:1400px; margin:0 auto; padding:20px; position:relative; z-index
     </div>
   </div>
 
+  <!-- API Key bar -->
+  <div id="apikey-bar">
+    <label>🔑 ANTHROPIC API KEY:</label>
+    <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+    <button id="apikey-save" onclick="saveApiKey()">TALLENNA</button>
+    <span id="apikey-status"></span>
+    <button id="apikey-clear" onclick="clearApiKey()" style="display:none">Poista avain</button>
+  </div>
+
   <!-- Ticker -->
   <div id="ticker-bar">
     <div class="ticker-tag">LIVE</div>
@@ -439,6 +473,55 @@ Palauta VAIN JSON-taulukko, ei muuta tekstiä. Kentät: title, summary (1-2 laus
   }
 };
 
+// ─── API KEY ──────────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('iim_apikey') || ''; }
+
+function saveApiKey() {
+  const key = document.getElementById('apikey-input').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    document.getElementById('apikey-status').textContent = '⚠ Avain alkaa sk-ant-...';
+    document.getElementById('apikey-status').style.color = '#dc2626';
+    return;
+  }
+  localStorage.setItem('iim_apikey', key);
+  document.getElementById('apikey-status').textContent = '✓ Tallennettu!';
+  document.getElementById('apikey-status').style.color = '#16a34a';
+  document.getElementById('apikey-clear').style.display = 'inline';
+  document.getElementById('apikey-bar').style.background = '#f0fdf4';
+  document.getElementById('apikey-bar').style.borderBottomColor = '#16a34a';
+  setTimeout(() => { document.getElementById('apikey-bar').classList.add('hidden'); }, 1500);
+  fetchAll();
+  fetchStocks();
+}
+
+function clearApiKey() {
+  localStorage.removeItem('iim_apikey');
+  document.getElementById('apikey-input').value = '';
+  document.getElementById('apikey-status').textContent = '';
+  document.getElementById('apikey-clear').style.display = 'none';
+  document.getElementById('apikey-bar').classList.remove('hidden');
+  document.getElementById('apikey-bar').style.background = '#fff8e7';
+  document.getElementById('apikey-bar').style.borderBottomColor = '#e8b84b';
+}
+
+function initApiKeyBar() {
+  const key = getApiKey();
+  if (key) {
+    document.getElementById('apikey-input').value = key;
+    document.getElementById('apikey-bar').classList.add('hidden');
+    document.getElementById('apikey-clear').style.display = 'inline';
+  }
+}
+
+function apiHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true',
+    'x-api-key': getApiKey()
+  };
+}
+
 // ─── STATE ────────────────────────────────────────────────────
 const state = {
   articles: { forest:[], metal:[], yara:[], rail:[] },
@@ -492,11 +575,16 @@ async function fetchIndustry(industry) {
   setStatus(industry, 'busy', 'Haetaan uutisia...');
   showSkeleton(industry);
 
+  if(!getApiKey()) {
+    setStatus(industry,'error','Anna API-avain ensin');
+    document.getElementById('content-'+industry).innerHTML='<div class="panel-msg"><div class="icon">🔑</div><div class="msg">ANNA ANTHROPIC API-AVAIN YLÄPALKISSA</div></div>';
+    return;
+  }
   try {
     // Step 1: Ask Claude to search the web (may use tool_use)
     const res1 = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:apiHeaders(),
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:4000,
@@ -518,7 +606,7 @@ async function fetchIndustry(industry) {
       }));
       const res2 = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
-        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:apiHeaders(),
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',
           max_tokens:4000,
@@ -674,7 +762,7 @@ async function fetchStocks() {
     const stockNames = STOCKS.map(s=>s.name+' ('+s.sym+')').join(', ');
     const sres = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:apiHeaders(),
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1500,
@@ -695,7 +783,7 @@ async function fetchStocks() {
       const toolUses = (sd.content||[]).filter(b=>b.type==='tool_use');
       const sres2 = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
-        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:apiHeaders(),
         body: JSON.stringify({
           model:'claude-sonnet-4-20250514',
           max_tokens:1500,
@@ -762,9 +850,17 @@ function esc(s) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-fetchAll();
-fetchStocks();
-scheduleRefresh();
+initApiKeyBar();
+if(getApiKey()) {
+  fetchAll();
+  fetchStocks();
+  scheduleRefresh();
+}
+
+// Allow Enter key in API input
+document.getElementById('apikey-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter') saveApiKey();
+});
 </script>
 </body>
 </html>
