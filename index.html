@@ -101,8 +101,7 @@
   .del-btn { background: none; border: none; color: var(--text2); cursor: pointer; padding: 2px 3px; font-size: 0.82rem; line-height: 1; transition: color 0.1s; flex-shrink: 0; }
   .del-btn:hover { color: var(--danger); }
 
-  .export-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; background: var(--accent2); border: none; border-radius: 6px; color: white; font-family: 'Raleway', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; justify-content: center; }
-  .export-btn:hover { opacity: 0.85; }
+
 
   #map { flex: 1; background: #f5f3ee; }
 
@@ -140,6 +139,7 @@
     <button id="tog-pelkistetty" onclick="setBasemap('pelkistetty')">Pelkistetty</button>
     <button id="tog-mml" onclick="setBasemap('mml')">MML</button>
     <button id="tog-selkokartta" onclick="setBasemap('selkokartta')">MML Selkokartta</button>
+    <button id="tog-satelliitti" onclick="setBasemap('satelliitti')">Satelliitti</button>
   </div>
 </header>
 
@@ -352,13 +352,7 @@
       <div class="layers-list" id="layers-list"><div class="info-text">Ei merkintöjä vielä.</div></div>
     </div>
 
-    <!-- VIENTI -->
-    <div class="sidebar-section">
-      <button class="export-btn" onclick="exportMap()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Vie PNG-kuvana
-      </button>
-    </div>
+
   </div>
 
   <div id="map"></div>
@@ -370,7 +364,6 @@
   <span id="status-zoom">Zoom: –</span>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const MML_KEY = 'bf6fc2ec-b9fc-4ee8-b4f5-8cfc7de5467f';
 const PALETTE = ['#e63946','#00b4d8','#f77f00','#80ed99','#ffd166','#c77dff','#333333','#06d6a0'];
@@ -392,6 +385,9 @@ const basemaps = {
   }),
   selkokartta: L.tileLayer(`https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/selkokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${MML_KEY}`, {
     maxZoom: 16, attribution: '&copy; Maanmittauslaitos', crossOrigin: true
+  }),
+  satelliitti: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, attribution: '&copy; Esri, Maxar, Earthstar Geographics'
   })
 };
 
@@ -402,7 +398,7 @@ function setBasemap(n) {
   map.removeLayer(basemaps[currentBasemap]);
   basemaps[n].addTo(map);
   currentBasemap = n;
-  ['osm','pelkistetty','mml','selkokartta'].forEach(k => {
+  ['osm','pelkistetty','mml','selkokartta','satelliitti'].forEach(k => {
     document.getElementById('tog-' + k).classList.toggle('active', k === n);
   });
   // Make sure overlays stay on top
@@ -1056,15 +1052,6 @@ function removeItem(id) {
   items.splice(idx,1); updateLayers();
 }
 
-// ---- EXPORT ----
-function exportMap() {
-  const bar=document.getElementById('loading-bar'); bar.classList.add('active');
-  setTimeout(()=>{
-    html2canvas(document.getElementById('map'),{useCORS:true,allowTaint:true,scale:2})
-      .then(canvas=>{const a=document.createElement('a');a.download='rataverkkokartta.png';a.href=canvas.toDataURL('image/png');a.click();bar.classList.remove('active');})
-      .catch(()=>{bar.classList.remove('active');alert('Vienti epäonnistui. Kokeile Win+Shift+S tai Cmd+Shift+4.');});
-  },100);
-}
 
 buildAreaControls();
 loadStations();
